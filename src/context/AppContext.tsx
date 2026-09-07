@@ -26,8 +26,9 @@ import {
   INITIAL_NOTIFICATIONS,
   INITIAL_STORE_SETTINGS
 } from '../data/mockData';
-import { auth, googleProvider } from '../firebase';
+import { auth, db, googleProvider } from '../firebase';
 import { signInWithPopup } from 'firebase/auth';
+import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 
 export type AdminTab = 
   | 'dashboard' 
@@ -956,6 +957,53 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     localStorage.setItem('mn_marketing', JSON.stringify(marketingBanners));
   }, [marketingBanners]);
+
+  const [cloudReady, setCloudReady] = useState(false);
+
+  useEffect(() => {
+    if (!db) {
+      setCloudReady(true);
+      return;
+    }
+
+    const storeRef = doc(db, 'stores', 'maison-noir');
+    return onSnapshot(storeRef, snapshot => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        if (Array.isArray(data.products)) setProducts(data.products as Product[]);
+        if (Array.isArray(data.orders)) setOrders(data.orders as Order[]);
+        if (Array.isArray(data.customers)) setCustomers(data.customers as CustomerUser[]);
+        if (Array.isArray(data.inventoryLogs)) setInventoryLogs(data.inventoryLogs as InventoryLog[]);
+        if (Array.isArray(data.notifications)) setNotifications(data.notifications as AdminNotification[]);
+        if (Array.isArray(data.discounts)) setDiscounts(data.discounts as DiscountCode[]);
+        if (Array.isArray(data.marketingBanners)) setMarketingBanners(data.marketingBanners as MarketingBanner[]);
+        if (data.storeSettings) setStoreSettings(data.storeSettings as StoreSettings);
+      }
+      setCloudReady(true);
+    }, error => {
+      console.error('Firestore store sync failed:', error);
+      setCloudReady(true);
+      showToast('Cloud data is unavailable. Changes are currently local only.', 'error');
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!db || !cloudReady) return;
+
+    void setDoc(doc(db, 'stores', 'maison-noir'), {
+      products,
+      orders,
+      customers,
+      inventoryLogs,
+      notifications,
+      discounts,
+      marketingBanners,
+      storeSettings,
+      updatedAt: new Date().toISOString()
+    }, { merge: true }).catch(error => {
+      console.error('Firestore store write failed:', error);
+    });
+  }, [cloudReady, products, orders, customers, inventoryLogs, notifications, discounts, marketingBanners, storeSettings]);
 
   const addMarketingBanner = (banner: Omit<MarketingBanner, 'id'>) => {
     const newBanner: MarketingBanner = {

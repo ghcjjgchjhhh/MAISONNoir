@@ -52,6 +52,7 @@ interface AppContextType {
   logout: () => void;
   isAuthModalOpen: boolean;
   setIsAuthModalOpen: (open: boolean) => void;
+  updateProfile: (name: string) => void;
   accountOpen: boolean;
   setAccountOpen: (open: boolean) => void;
   wishlist: Product[];
@@ -235,6 +236,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const isAdmin = checkIsAdmin(user);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const updateProfile = (name: string) => {
+    const nextName = name.trim();
+    if (!nextName || !user) return;
+    const nextUser = { ...user, name: nextName };
+    setUser(nextUser);
+    localStorage.setItem('mn_user', JSON.stringify(nextUser));
+    showToast('Profile updated.');
+  };
   const [accountOpen, setAccountOpen] = useState(false);
 
   const [wishlist, setWishlist] = useState<Product[]>(() => {
@@ -1220,6 +1229,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         logout,
         isAuthModalOpen,
         setIsAuthModalOpen,
+        updateProfile,
         accountOpen,
         setAccountOpen,
         wishlist,

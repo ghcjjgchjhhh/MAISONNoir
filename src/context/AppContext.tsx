@@ -127,6 +127,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   useEffect(() => {
+    if (!auth) return;
+
     return onAuthStateChanged(auth, (firebaseUser) => {
       if (!firebaseUser) return;
 
@@ -145,6 +147,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   const loginWithGoogle = async (): Promise<User> => {
+    if (!auth) {
+      throw new Error('Google sign-in is not configured yet. Add the Firebase variables in Vercel.');
+    }
+
     const result = await signInWithPopup(auth, googleProvider);
     const firebaseUser = result.user;
     const signedInName = firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Customer';
@@ -189,7 +195,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const logout = () => {
-    void firebaseSignOut(auth);
+    if (auth) void firebaseSignOut(auth);
     setUser(null);
     localStorage.removeItem('mn_user');
     setCurrentView('store');

@@ -6,15 +6,69 @@
   :root {
     --font-serif: 'Bodoni Moda', serif;
     --font-sans: 'Plus Jakarta Sans', sans-serif;
+    --sat: env(safe-area-inset-top, 0px);
+    --sab: env(safe-area-inset-bottom, 0px);
+    --sal: env(safe-area-inset-left, 0px);
+    --sar: env(safe-area-inset-right, 0px);
+  }
+
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 7rem;
+    -webkit-text-size-adjust: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    height: 100%;
+  }
+
+  section[id],
+  [id] {
+    scroll-margin-top: 7rem;
   }
 
   body {
     font-family: var(--font-sans);
+    overscroll-behavior-y: auto;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: pan-x pan-y;
+    overflow-x: hidden;
+    overflow-y: auto;
+    min-height: 100%;
+  }
+
+  /* Keep native system gesture areas clean and responsive */
+  button, a, input, select, textarea {
+    touch-action: manipulation;
   }
 
   h1, h2, h3, h4, .font-serif {
     font-family: var(--font-serif);
   }
+}
+
+/* Edge-to-edge Android Safe Area utility classes */
+.pt-safe {
+  padding-top: max(1rem, env(safe-area-inset-top, 0px));
+}
+
+.pb-safe {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+}
+
+.pb-safe-nav {
+  padding-bottom: max(4.5rem, calc(4rem + env(safe-area-inset-bottom, 0px)));
+}
+
+.pl-safe {
+  padding-left: env(safe-area-inset-left, 0px);
+}
+
+.pr-safe {
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+.h-screen-safe {
+  height: 100dvh;
 }
 
 @keyframes marquee {

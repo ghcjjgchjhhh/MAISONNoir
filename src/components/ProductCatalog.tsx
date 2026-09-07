@@ -48,7 +48,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ searchQuery }) =
   };
 
   return (
-    <section id="shop" className="py-20 sm:py-28 bg-white dark:bg-[#0c0c0c] transition-colors duration-300">
+    <section id="shop" className="scroll-mt-28 py-20 sm:py-28 bg-white dark:bg-[#0c0c0c] transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}

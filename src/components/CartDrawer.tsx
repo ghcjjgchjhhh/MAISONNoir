@@ -38,7 +38,10 @@ export const CartDrawer: React.FC = () => {
         <div className="w-screen max-w-md bg-white dark:bg-[#0f0f0f] border-l border-neutral-200 dark:border-neutral-800 shadow-2xl flex flex-col justify-between animate-slide-left">
           
           {/* Cart Header */}
-          <div className="p-6 border-b border-neutral-200 dark:border-neutral-800 flex items-center justify-between">
+          <div 
+            className="p-6 border-b border-neutral-200 dark:border-neutral-800 flex items-center justify-between"
+            style={{ paddingTop: 'max(1.5rem, env(safe-area-inset-top, 16px))' }}
+          >
             <div className="flex items-center gap-2">
               <ShoppingBag className="w-5 h-5" />
               <h2 className="font-serif text-xl font-medium tracking-wide">Your Shopping Bag</h2>
@@ -154,7 +157,14 @@ export const CartDrawer: React.FC = () => {
 
           {/* Cart Footer / Checkout CTA */}
           {cart.length > 0 && (
-            <div className="p-6 border-t border-neutral-200 dark:border-neutral-800 bg-neutral-50/70 dark:bg-neutral-900/30 space-y-4">
+            <div 
+              className="p-6 border-t border-neutral-200 dark:border-neutral-800 bg-neutral-50/70 dark:bg-neutral-900/30 space-y-4"
+              style={{
+                paddingBottom: 'max(1.5rem, calc(1rem + env(safe-area-inset-bottom, 16px)))',
+                paddingLeft: 'max(1.5rem, env(safe-area-inset-left, 0px))',
+                paddingRight: 'max(1.5rem, env(safe-area-inset-right, 0px))'
+              }}
+            >
               <div className="space-y-2 text-xs">
                 <div className="flex justify-between text-neutral-500 dark:text-neutral-400">
                   <span>Subtotal</span>

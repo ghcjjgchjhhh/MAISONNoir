@@ -1,4 +1,13 @@
-import { Product, Order } from '../types';
+import {
+  Product,
+  Order,
+  StoreSettings,
+  InventoryLog,
+  CustomerUser,
+  DiscountCode,
+  MarketingBanner,
+  AdminNotification
+} from '../types';
 
 export const INITIAL_PRODUCTS: Product[] = [
   {
@@ -310,5 +319,169 @@ export const INITIAL_ORDERS: Order[] = [
     paymentMethod: "cod",
     status: "Delivered",
     paymentStatus: "Paid on Delivery (Cash)"
+  }
+];
+
+export const INITIAL_STORE_SETTINGS: StoreSettings = {
+  storeName: 'Maison Noir',
+  tagline: 'Luxury essentials, elevated daily.',
+  storeDescription: 'Curated luxury fashion and accessories for modern wardrobes.',
+  logo: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?q=80&w=400&auto=format&fit=crop',
+  email: 'support@maisonnoir.example',
+  phone: '+234 800 000 0000',
+  currency: 'USD',
+  currencySymbol: '$',
+  lowStockThreshold: 5,
+  outOfStockAction: 'show_badge',
+  defaultShippingFee: 25,
+  freeShippingThreshold: 200,
+  supportedLocations: ['Lagos', 'Abuja', 'London', 'Online'],
+  enablePushNotifications: true,
+  taxRate: 7.5,
+  socials: {
+    instagram: 'https://instagram.com/maisonnoir',
+    twitter: 'https://x.com/maisonnoir',
+    facebook: 'https://facebook.com/maisonnoir'
+  }
+};
+
+export const INITIAL_INVENTORY_LOGS: InventoryLog[] = [
+  {
+    id: 'log-1',
+    date: '2026-09-07T08:00:00.000Z',
+    productId: 1,
+    productName: 'Tailored Wool Overcoat',
+    variantStr: 'M / Black (UW-1-M)',
+    changeQty: 10,
+    previousStock: 0,
+    newStock: 10,
+    reason: 'Initial Inventory',
+    adminName: 'Admin Owner'
+  },
+  {
+    id: 'log-2',
+    date: '2026-09-06T18:30:00.000Z',
+    productId: 2,
+    productName: 'Classic Monochrome Oxford',
+    variantStr: 'L / White (UW-2-L)',
+    changeQty: -1,
+    previousStock: 12,
+    newStock: 11,
+    reason: 'Sold through Order',
+    orderId: 'ORD-1001',
+    adminName: 'Automated Checkout'
+  }
+];
+
+export const INITIAL_CUSTOMERS: CustomerUser[] = [
+  {
+    id: 'cust-1',
+    name: 'Adeola Adeleke',
+    email: 'adeola@example.com',
+    phone: '+234 803 456 7890',
+    provider: 'email',
+    status: 'active',
+    ordersCount: 2,
+    totalSpent: 760,
+    createdAt: '2026-08-10T00:00:00.000Z',
+    lastActive: '2026-09-07T08:30:00.000Z',
+    sessions: [
+      {
+        id: 'sess-1',
+        device: 'iPhone 15 Pro',
+        deviceType: 'mobile',
+        browser: 'Safari',
+        ip: '102.88.10.12',
+        lastActive: '2026-09-07T08:30:00.000Z',
+        loginDate: '2026-09-01T12:00:00.000Z',
+        status: 'active'
+      }
+    ],
+    address: 'Eko Atlantic, Lagos',
+    addresses: [
+      {
+        id: 'addr-1',
+        name: 'Home',
+        phone: '+234 803 456 7890',
+        address: 'Penthouse 4, Eko Pearl Towers, Eko Atlantic',
+        city: 'Victoria Island',
+        state: 'Lagos',
+        isDefault: true
+      }
+    ]
+  },
+  {
+    id: 'cust-2',
+    name: 'Chioma Okonjo',
+    email: 'chioma.o@fashionintl.org',
+    phone: '+234 818 990 1234',
+    provider: 'google',
+    status: 'active',
+    ordersCount: 1,
+    totalSpent: 310,
+    createdAt: '2026-08-20T00:00:00.000Z',
+    lastActive: '2026-09-06T19:20:00.000Z',
+    sessions: [
+      {
+        id: 'sess-2',
+        device: 'MacBook Pro',
+        deviceType: 'desktop',
+        browser: 'Chrome',
+        ip: '197.210.88.4',
+        lastActive: '2026-09-06T19:20:00.000Z',
+        loginDate: '2026-09-06T19:00:00.000Z',
+        status: 'active'
+      }
+    ],
+    address: 'Ikoyi, Lagos',
+    addresses: [
+      {
+        id: 'addr-2',
+        name: 'Work',
+        phone: '+234 818 990 1234',
+        address: '12 Bourdillon Road, Apt 5B',
+        city: 'Ikoyi',
+        state: 'Lagos',
+        isDefault: true
+      }
+    ]
+  }
+];
+
+export const INITIAL_DISCOUNTS: DiscountCode[] = [
+  {
+    id: 'disc-welcome',
+    code: 'WELCOME10',
+    description: '10% off first order over $200',
+    type: 'percentage',
+    value: 10,
+    minOrderAmount: 200,
+    usedCount: 0,
+    isActive: true,
+    status: 'active'
+  }
+];
+
+export const INITIAL_MARKETING_BANNERS: MarketingBanner[] = [
+  {
+    id: 'mkt-1',
+    title: 'Autumn Atelier Drop',
+    subtitle: 'New monochrome silhouettes now in stock.',
+    ctaText: 'Shop the collection',
+    ctaLink: '#shop',
+    active: true,
+    badge: 'New'
+  }
+];
+
+export const INITIAL_NOTIFICATIONS: AdminNotification[] = [
+  {
+    id: 'notif-1',
+    type: 'new_order',
+    title: 'New Order',
+    message: 'A new order has been placed and needs confirmation.',
+    date: 'Just now',
+    read: false,
+    targetId: 'ORD-1001'
   }
 ];

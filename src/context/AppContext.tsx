@@ -1064,7 +1064,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   useEffect(() => {
-    if (!db || !cloudReady) return;
+    if (!db || !auth?.currentUser || !cloudReady) return;
 
     void setDoc(doc(db, 'stores', 'maison-noir'), {
       schemaVersion: STORE_DATA_VERSION,

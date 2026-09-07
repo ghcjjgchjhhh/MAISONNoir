@@ -189,7 +189,7 @@ export const Header: React.FC<HeaderProps> = ({ onSearchChange, searchQuery = ''
             {user ? (
               <div className="relative">
                 <button
-                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                  onClick={() => { setAccountOpen(true); setIsUserMenuOpen(false); }}
                   id="user-profile-menu-btn"
                   className="flex items-center gap-1.5 p-1 rounded-full border border-neutral-300 dark:border-neutral-700 hover:border-black dark:hover:border-white transition-all active:scale-95"
                   aria-label="User profile"

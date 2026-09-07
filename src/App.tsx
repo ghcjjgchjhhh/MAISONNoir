@@ -13,6 +13,7 @@ import { AuthModal } from './components/AuthModal';
 import { PolicyModal } from './components/PolicyModal';
 import { AdminDashboard } from './components/AdminDashboard';
 import { AccountPage } from './components/AccountPage';
+import { SplashScreen } from './components/SplashScreen';
 import { CheckCircle, AlertCircle, Info } from 'lucide-react';
 
 const MainLayout: React.FC = () => {
@@ -103,9 +104,11 @@ const MainLayout: React.FC = () => {
 };
 
 export default function App() {
+  const [isSplashVisible, setIsSplashVisible] = useState(true);
+
   return (
     <AppProvider>
-      <MainLayout />
+      {isSplashVisible ? <SplashScreen onComplete={() => setIsSplashVisible(false)} /> : <MainLayout />}
     </AppProvider>
   );
 }

@@ -35,17 +35,17 @@ export const AdminOverview: React.FC = () => {
   const [salesTimeframe, setSalesTimeframe] = useState<'today' | '7d' | '30d' | '3m' | '6m' | '1y' | 'custom'>('7d');
 
   // Compute live KPI metrics
-  const totalSalesRevenue = orders.reduce((sum, o) => sum + o.total, 0) + 4250.00; // includes base baseline for realistic demo
-  const totalOrdersCount = orders.length + 123;
-  const totalCustomersCount = customers.length + 1019;
-  const totalProductsSold = orders.reduce((sum, o) => sum + o.items.reduce((s, i) => s + i.qty, 0), 0) + 307;
+  const totalSalesRevenue = orders.reduce((sum, o) => sum + (o.status === 'Cancelled' ? 0 : o.total), 0);
+  const totalOrdersCount = orders.length;
+  const totalCustomersCount = customers.length;
+  const totalProductsSold = orders.reduce((sum, o) => sum + o.items.reduce((s, i) => s + i.qty, 0), 0);
 
   // Status breakdown
-  const pendingOrders = orders.filter(o => o.status === 'Pending').length + 17;
-  const processingOrders = orders.filter(o => o.status === 'Processing').length + 31;
-  const shippedOrders = orders.filter(o => o.status === 'Shipped').length + 55;
-  const deliveredOrders = orders.filter(o => o.status === 'Delivered').length + 18;
-  const cancelledOrders = orders.filter(o => o.status === 'Cancelled').length + 2;
+  const pendingOrders = orders.filter(o => o.status === 'Pending').length;
+  const processingOrders = orders.filter(o => o.status === 'Processing').length;
+  const shippedOrders = orders.filter(o => o.status === 'Shipped').length;
+  const deliveredOrders = orders.filter(o => o.status === 'Delivered').length;
+  const cancelledOrders = orders.filter(o => o.status === 'Cancelled').length;
   const totalStatusSum = pendingOrders + processingOrders + shippedOrders + deliveredOrders + cancelledOrders;
 
   // Stock status checks
@@ -71,40 +71,41 @@ export const AdminOverview: React.FC = () => {
     }
   });
 
-  // Timeframe chart simulation datasets
-  const chartDatasets: Record<string, { labels: string[]; data: number[] }> = {
-    today: {
-      labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '23:59'],
-      data: [120, 80, 480, 920, 1450, 1100, 742]
-    },
-    '7d': {
-      labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-      data: [420, 580, 890, 650, 1120, 1480, 1250]
-    },
-    '30d': {
-      labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
-      data: [3200, 4800, 6100, 7400]
-    },
-    '3m': {
-      labels: ['Jul', 'Aug', 'Sep'],
-      data: [14200, 18900, 24500]
-    },
-    '6m': {
-      labels: ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'],
-      data: [9800, 12400, 16100, 19500, 22800, 27400]
-    },
-    '1y': {
-      labels: ['2025 Q4', '2026 Q1', '2026 Q2', '2026 Q3'],
-      data: [38000, 52000, 68000, 89000]
-    },
-    custom: {
-      labels: ['Sep 1', 'Sep 2', 'Sep 3', 'Sep 4', 'Sep 5', 'Sep 6', 'Sep 7'],
-      data: [610, 740, 920, 880, 1340, 1520, 1780]
+  const buildSalesDataset = (days: number) => {
+    const labels: string[] = [];
+    const data: number[] = [];
+    const bucketDays = Math.max(1, Math.ceil(days / 7));
+
+    for (let index = 6; index >= 0; index -= 1) {
+      const end = new Date();
+      end.setHours(23, 59, 59, 999);
+      end.setDate(end.getDate() - index * bucketDays);
+      const start = new Date(end);
+      start.setDate(start.getDate() - bucketDays + 1);
+      labels.push(end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+      data.push(orders
+        .filter(order => {
+          const createdAt = new Date(order.createdAt);
+          return createdAt >= start && createdAt <= end && order.status !== 'Cancelled';
+        })
+        .reduce((sum, order) => sum + order.total, 0));
     }
+
+    return { labels, data };
+  };
+
+  const chartDatasets: Record<string, { labels: string[]; data: number[] }> = {
+    today: buildSalesDataset(1),
+    '7d': buildSalesDataset(7),
+    '30d': buildSalesDataset(30),
+    '3m': buildSalesDataset(90),
+    '6m': buildSalesDataset(180),
+    '1y': buildSalesDataset(365),
+    custom: buildSalesDataset(7)
   };
 
   const currentChart = chartDatasets[salesTimeframe] || chartDatasets['7d'];
-  const maxChartVal = Math.max(...currentChart.data) * 1.15;
+  const maxChartVal = Math.max(...currentChart.data, 1) * 1.15;
 
   // SVG Line Chart coordinates builder
   const chartWidth = 600;
@@ -175,9 +176,9 @@ export const AdminOverview: React.FC = () => {
             <div className="flex items-center gap-1.5 mt-1 text-xs">
               <span className="flex items-center text-emerald-600 dark:text-emerald-400 font-bold">
                 <ArrowUpRight className="w-3.5 h-3.5" />
-                12%
+                Live
               </span>
-              <span className="text-neutral-400 text-[11px]">vs last 7 days</span>
+              <span className="text-neutral-400 text-[11px]">recorded data</span>
             </div>
           </div>
         </div>
@@ -197,9 +198,9 @@ export const AdminOverview: React.FC = () => {
             <div className="flex items-center gap-1.5 mt-1 text-xs">
               <span className="flex items-center text-emerald-600 dark:text-emerald-400 font-bold">
                 <ArrowUpRight className="w-3.5 h-3.5" />
-                18%
+                Live
               </span>
-              <span className="text-neutral-400 text-[11px]">vs last 7 days</span>
+              <span className="text-neutral-400 text-[11px]">recorded data</span>
             </div>
           </div>
         </div>
@@ -219,9 +220,9 @@ export const AdminOverview: React.FC = () => {
             <div className="flex items-center gap-1.5 mt-1 text-xs">
               <span className="flex items-center text-emerald-600 dark:text-emerald-400 font-bold">
                 <ArrowUpRight className="w-3.5 h-3.5" />
-                22%
+                Live
               </span>
-              <span className="text-neutral-400 text-[11px]">vs last 7 days</span>
+              <span className="text-neutral-400 text-[11px]">recorded data</span>
             </div>
           </div>
         </div>
@@ -241,9 +242,9 @@ export const AdminOverview: React.FC = () => {
             <div className="flex items-center gap-1.5 mt-1 text-xs">
               <span className="flex items-center text-emerald-600 dark:text-emerald-400 font-bold">
                 <ArrowUpRight className="w-3.5 h-3.5" />
-                15%
+                Live
               </span>
-              <span className="text-neutral-400 text-[11px]">vs last 7 days</span>
+              <span className="text-neutral-400 text-[11px]">recorded data</span>
             </div>
           </div>
         </div>

@@ -39,6 +39,12 @@ export const AdminAnalytics: React.FC = () => {
     });
   });
 
+  const regionRevenue = Object.entries(successfulOrders.reduce<Record<string, number>>((regions, order) => {
+    const region = [order.customer.city, order.customer.state].filter(Boolean).join(', ') || 'Location not provided';
+    regions[region] = (regions[region] || 0) + order.total;
+    return regions;
+  }, {})).sort(([, first], [, second]) => second - first);
+
   const exportCSV = () => {
     const headers = 'Order ID,Date,Customer,Total,Status,Payment\n';
     const rows = orders.map(o => 
@@ -103,7 +109,7 @@ export const AdminAnalytics: React.FC = () => {
           </div>
           <div className="flex items-center gap-1 mt-2 text-xs font-bold text-emerald-600 dark:text-emerald-400">
             <TrendingUp className="w-3.5 h-3.5" />
-            <span>+14.8% vs prior period</span>
+            <span>Based on recorded orders</span>
           </div>
         </div>
 
@@ -119,7 +125,7 @@ export const AdminAnalytics: React.FC = () => {
           </div>
           <div className="flex items-center gap-1 mt-2 text-xs font-bold text-indigo-600 dark:text-indigo-400">
             <ArrowUpRight className="w-3.5 h-3.5" />
-            <span>Healthy basket size</span>
+            <span>Calculated from recorded orders</span>
           </div>
         </div>
 
@@ -146,10 +152,10 @@ export const AdminAnalytics: React.FC = () => {
             </div>
           </div>
           <div className="text-2xl font-black text-neutral-900 dark:text-neutral-50 mt-2">
-            3.42%
+            N/A
           </div>
           <div className="flex items-center gap-1 mt-2 text-xs font-bold text-purple-600 dark:text-purple-400">
-            <span>+0.6% over industry benchmark</span>
+            <span>Visitor tracking is not configured</span>
           </div>
         </div>
       </div>
@@ -197,22 +203,14 @@ export const AdminAnalytics: React.FC = () => {
           </h3>
 
           <div className="space-y-2 text-xs">
-            <div className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-900">
-              <span className="font-semibold text-neutral-800 dark:text-neutral-200">New York, NY</span>
-              <span className="font-bold text-neutral-900 dark:text-neutral-100">$2,450.00 (32%)</span>
-            </div>
-            <div className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-900">
-              <span className="font-semibold text-neutral-800 dark:text-neutral-200">Los Angeles, CA</span>
-              <span className="font-bold text-neutral-900 dark:text-neutral-100">$1,890.00 (24%)</span>
-            </div>
-            <div className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-900">
-              <span className="font-semibold text-neutral-800 dark:text-neutral-200">Chicago, IL</span>
-              <span className="font-bold text-neutral-900 dark:text-neutral-100">$1,120.00 (15%)</span>
-            </div>
-            <div className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-900">
-              <span className="font-semibold text-neutral-800 dark:text-neutral-200">Austin, TX</span>
-              <span className="font-bold text-neutral-900 dark:text-neutral-100">$840.00 (11%)</span>
-            </div>
+            {regionRevenue.length === 0 ? (
+              <p className="py-6 text-center text-neutral-400">No order locations recorded yet.</p>
+            ) : regionRevenue.slice(0, 5).map(([region, revenue]) => (
+              <div key={region} className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-900">
+                <span className="font-semibold text-neutral-800 dark:text-neutral-200">{region}</span>
+                <span className="font-bold text-neutral-900 dark:text-neutral-100">${revenue.toFixed(2)}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>

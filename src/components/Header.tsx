@@ -15,6 +15,7 @@ import {
   FileText,
   ChevronRight
 } from 'lucide-react';
+import { InstallAppButton } from './InstallAppButton';
 
 interface HeaderProps {
   onSearchChange?: (query: string) => void;
@@ -291,6 +292,8 @@ export const Header: React.FC<HeaderProps> = ({ onSearchChange, searchQuery = ''
             <UserIcon className="w-4 h-4" />
             <span className="hidden lg:inline">Account</span>
           </button>
+
+          <InstallAppButton />
 
           {/* Shopping Bag Button (ALWAYS visible on mobile & desktop) */}
           <button

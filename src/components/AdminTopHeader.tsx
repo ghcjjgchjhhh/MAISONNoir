@@ -14,7 +14,8 @@ import {
   ChevronDown, 
   LogOut,
   SlidersHorizontal,
-  X
+  X,
+  ArrowLeft
 } from 'lucide-react';
 
 interface AdminTopHeaderProps {
@@ -70,6 +71,15 @@ export const AdminTopHeader: React.FC<AdminTopHeaderProps> = ({ onOpenMobileMenu
     <header className="sticky top-0 z-30 h-16 bg-white/90 dark:bg-[#0c0c0c]/90 backdrop-blur-md border-b border-neutral-200 dark:border-neutral-800/80 px-4 lg:px-8 flex items-center justify-between gap-4">
       {/* Left side: Hamburger & Global Search */}
       <div className="flex items-center gap-3 flex-1 max-w-xl">
+        <button
+          onClick={() => setCurrentView('store')}
+          className="flex items-center gap-1.5 p-2 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl shrink-0"
+          aria-label="Back to storefront"
+          title="Back to storefront"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span className="hidden sm:inline text-xs font-semibold">Back</span>
+        </button>
         <button
           onClick={onOpenMobileMenu}
           className="lg:hidden p-2 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl"

@@ -1101,7 +1101,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Navigation & Views
-  const [currentView, setCurrentView] = useState<'store' | 'admin'>('store');
+  const [currentView, setCurrentViewState] = useState<'store' | 'admin'>('store');
+  const setCurrentView = (view: 'store' | 'admin') => {
+    if (view === currentView) return;
+    window.history.pushState({ appView: view }, '', window.location.href);
+    setCurrentViewState(view);
+  };
+
+  useEffect(() => {
+    const handleBrowserBack = (event: PopStateEvent) => {
+      setCurrentViewState(event.state?.appView === 'admin' ? 'admin' : 'store');
+    };
+
+    window.addEventListener('popstate', handleBrowserBack);
+    return () => window.removeEventListener('popstate', handleBrowserBack);
+  }, []);
   const [adminActiveTab, setAdminActiveTab] = useState<AdminTab>('dashboard');
   const [adminSearchQuery, setAdminSearchQuery] = useState('');
   const [selectedCustomerIdForView, setSelectedCustomerIdForView] = useState<string | null>(null);
@@ -1131,7 +1145,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setDiscounts([]);
     setMarketingBanners([]);
     setStoreSettings(INITIAL_STORE_SETTINGS);
-    showToast('Factory demo data restored successfully.', 'success');
+    showToast('Store data cleared.', 'success');
   };
 
   const subscribers = [

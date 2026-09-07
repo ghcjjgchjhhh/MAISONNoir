@@ -30,7 +30,7 @@
     font-family: var(--font-sans);
     overscroll-behavior-y: auto;
     -webkit-tap-highlight-color: transparent;
-    touch-action: pan-x pan-y;
+    touch-action: auto;
     overflow-x: hidden;
     overflow-y: auto;
     min-height: 100%;
@@ -69,6 +69,13 @@
 
 .h-screen-safe {
   height: 100dvh;
+}
+
+.modal-safe {
+  padding-top: max(1rem, env(safe-area-inset-top, 0px));
+  padding-right: max(1rem, env(safe-area-inset-right, 0px));
+  padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+  padding-left: max(1rem, env(safe-area-inset-left, 0px));
 }
 
 @keyframes marquee {

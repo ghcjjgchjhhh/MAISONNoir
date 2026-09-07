@@ -111,7 +111,7 @@ export const CheckoutModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 animate-fade-in">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 modal-safe animate-fade-in">
       <div 
         className="relative w-full max-w-4xl bg-white dark:bg-[#111111] border border-neutral-200 dark:border-neutral-800 shadow-2xl rounded-sm overflow-hidden flex flex-col max-h-[92vh]"
         onClick={(e) => e.stopPropagation()}

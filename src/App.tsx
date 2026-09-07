@@ -51,7 +51,8 @@ const MainLayout: React.FC = () => {
       {cartCount > 0 && !isCartOpen && currentView !== 'admin' && (
         <aside 
           aria-label="Shopping bag summary"
-          className="fixed bottom-4 inset-x-4 z-40 sm:hidden animate-fade-in"
+          className="fixed inset-x-4 z-40 sm:hidden animate-fade-in"
+          style={{ bottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}
         >
           <button
             onClick={() => setIsCartOpen(true)}
@@ -83,7 +84,7 @@ const MainLayout: React.FC = () => {
 
       {/* Global Toast Notification */}
       {toast && (
-        <div className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-50 max-w-sm w-auto bg-neutral-900 text-white dark:bg-white dark:text-black px-4 py-3 rounded-lg shadow-2xl flex items-center gap-3 border border-neutral-700 dark:border-neutral-200 animate-slide-left">
+        <div className="fixed right-4 sm:right-6 z-50 max-w-sm w-auto bg-neutral-900 text-white dark:bg-white dark:text-black px-4 py-3 rounded-lg shadow-2xl flex items-center gap-3 border border-neutral-700 dark:border-neutral-200 animate-slide-left" style={{ bottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}>
           {toast.type === 'error' ? (
             <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
           ) : toast.type === 'info' ? (

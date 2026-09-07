@@ -19,6 +19,7 @@ import {
   CustomerReview
 } from '../types';
 import { 
+  INITIAL_PRODUCTS,
   INITIAL_STORE_SETTINGS
 } from '../data/mockData';
 import { auth, db, googleProvider } from '../firebase';
@@ -367,9 +368,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [products, setProducts] = useState<Product[]>(() => {
     try {
       const saved = localStorage.getItem('mn_products');
-      return saved ? JSON.parse(saved) : [];
+      return saved ? JSON.parse(saved) : INITIAL_PRODUCTS;
     } catch {
-      return [];
+      return INITIAL_PRODUCTS;
     }
   });
 
@@ -1108,7 +1109,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setCloudReady(true);
           return;
         }
-        if (Array.isArray(data.products)) setProducts(data.products as Product[]);
+        if (Array.isArray(data.products)) {
+          const shouldSeedCatalog = data.products.length === 0;
+          setProducts(shouldSeedCatalog ? INITIAL_PRODUCTS : data.products as Product[]);
+        }
         if (Array.isArray(data.orders)) setOrders(data.orders as Order[]);
         if (Array.isArray(data.customers)) {
           setCustomers((data.customers as CustomerUser[]).filter(customer => !isDemoCustomer(customer)));
@@ -1132,6 +1136,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     void setDoc(doc(db, 'stores', 'maison-noir'), {
       schemaVersion: STORE_DATA_VERSION,
+      catalogSeeded: true,
       products,
       orders,
       customers,

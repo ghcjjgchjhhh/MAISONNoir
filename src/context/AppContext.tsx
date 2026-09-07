@@ -173,6 +173,8 @@ export function checkIsAdmin(user: User | null): boolean {
   return emailMatch || nameMatch || user.role === 'admin';
 }
 
+const isDemoCustomer = (customer: CustomerUser) => customer.id === 'cust-1' || customer.id === 'cust-2';
+
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Theme State
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -883,9 +885,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [customers, setCustomers] = useState<CustomerUser[]>(() => {
     try {
       const saved = localStorage.getItem('mn_customers');
-      return saved ? JSON.parse(saved) : INITIAL_CUSTOMERS;
+      const storedCustomers = saved ? JSON.parse(saved) : [];
+      return Array.isArray(storedCustomers) ? storedCustomers.filter(customer => !isDemoCustomer(customer)) : [];
     } catch {
-      return INITIAL_CUSTOMERS;
+      return [];
     }
   });
 
@@ -1027,7 +1030,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const data = snapshot.data();
         if (Array.isArray(data.products)) setProducts(data.products as Product[]);
         if (Array.isArray(data.orders)) setOrders(data.orders as Order[]);
-        if (Array.isArray(data.customers)) setCustomers(data.customers as CustomerUser[]);
+        if (Array.isArray(data.customers)) {
+          setCustomers((data.customers as CustomerUser[]).filter(customer => !isDemoCustomer(customer)));
+        }
         if (Array.isArray(data.inventoryLogs)) setInventoryLogs(data.inventoryLogs as InventoryLog[]);
         if (Array.isArray(data.notifications)) setNotifications(data.notifications as AdminNotification[]);
         if (Array.isArray(data.discounts)) setDiscounts(data.discounts as DiscountCode[]);
@@ -1103,7 +1108,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.removeItem('mn_store_settings');
     setProducts(INITIAL_PRODUCTS);
     setOrders(INITIAL_ORDERS);
-    setCustomers(INITIAL_CUSTOMERS);
+    setCustomers([]);
     setInventoryLogs(INITIAL_INVENTORY_LOGS);
     setDiscounts(INITIAL_DISCOUNTS);
     setMarketingBanners(INITIAL_MARKETING_BANNERS);

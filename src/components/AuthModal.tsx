@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import { X, Mail, User as UserIcon, ArrowRight, ArrowLeft } from 'lucide-react';
 
 export const AuthModal: React.FC = () => {
-  const { isAuthModalOpen, setIsAuthModalOpen, loginWithGoogle, loginWithEmail, openPolicyModal } = useApp();
+  const { isAuthModalOpen, setIsAuthModalOpen, loginWithGoogle, loginWithEmail, openPolicyModal, showToast } = useApp();
   const [customEmail, setCustomEmail] = useState('');
   const [customName, setCustomName] = useState('');
   const [isGoogleOAuthView, setIsGoogleOAuthView] = useState(false);
@@ -22,11 +22,17 @@ export const AuthModal: React.FC = () => {
 
   const handleGoogleOAuthSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!googleEmailInput.trim()) return;
-    const email = googleEmailInput.trim();
-    const name = googleNameInput.trim() || email.split('@')[0];
-    loginWithGoogle(email, name);
-    setIsGoogleOAuthView(false);
+    void handleGoogleSignIn();
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      await loginWithGoogle();
+      setIsGoogleOAuthView(false);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Google sign-in failed.';
+      showToast(message, 'error');
+    }
   };
 
   const handleClose = () => {
@@ -155,7 +161,7 @@ export const AuthModal: React.FC = () => {
             <div className="mb-6">
               <button
                 type="button"
-                onClick={() => setIsGoogleOAuthView(true)}
+                onClick={() => void handleGoogleSignIn()}
                 id="google-signin-btn"
                 className="w-full py-3 px-4 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-sm text-neutral-800 dark:text-neutral-200 flex items-center justify-center gap-3 font-medium text-xs tracking-wider transition-all shadow-sm"
               >

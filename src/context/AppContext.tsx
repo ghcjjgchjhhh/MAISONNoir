@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { onAuthStateChanged, signInWithPopup, signOut as firebaseSignOut } from 'firebase/auth';
 import { User, Product, CartItem, Order, DeliveryDetails, OrderStatus, PaymentMethod } from '../types';
 import { INITIAL_PRODUCTS, INITIAL_ORDERS } from '../data/mockData';
+import { auth, googleProvider } from '../firebase';
 
 interface AppContextType {
   // Auth
@@ -124,15 +126,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
-  const loginWithGoogle = async (customEmail = 'ifeanyianoma2@gmail.com', customName = 'Ifeanyi Anoma'): Promise<User> => {
-    const isUserAdmin = customEmail.toLowerCase().includes('ifeanyianoma2') || customName.toLowerCase().includes('ifeanyianoma2');
+  useEffect(() => {
+    return onAuthStateChanged(auth, (firebaseUser) => {
+      if (!firebaseUser) return;
+
+      const signedInUser: User = {
+        id: firebaseUser.uid,
+        name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Customer',
+        email: firebaseUser.email || '',
+        avatar: firebaseUser.photoURL || undefined,
+        role: 'customer',
+        provider: 'google'
+      };
+
+      setUser(signedInUser);
+      localStorage.setItem('mn_user', JSON.stringify(signedInUser));
+    });
+  }, []);
+
+  const loginWithGoogle = async (): Promise<User> => {
+    const result = await signInWithPopup(auth, googleProvider);
+    const firebaseUser = result.user;
+    const signedInName = firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Customer';
+    const isUserAdmin = firebaseUser.email?.toLowerCase().includes('ifeanyianoma2') || signedInName.toLowerCase().includes('ifeanyianoma2');
     const newUser: User = {
-      id: 'g_' + Math.random().toString(36).substring(2, 9),
-      name: customName,
-      email: customEmail,
+      id: firebaseUser.uid,
+      name: signedInName,
+      email: firebaseUser.email || '',
       avatar: isUserAdmin 
-        ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200&auto=format&fit=crop'
-        : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200&auto=format&fit=crop',
+        ? firebaseUser.photoURL || undefined
+        : firebaseUser.photoURL || undefined,
       role: isUserAdmin ? 'admin' : 'customer',
       provider: 'google'
     };
@@ -140,11 +163,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem('mn_user', JSON.stringify(newUser));
     setIsAuthModalOpen(false);
     
-    if (isUserAdmin) {
-      showToast(`Welcome Super Admin Ifeanyi! Admin Dashboard unlocked.`, 'success');
-    } else {
-      showToast(`Welcome back, ${customName}! Signed in with Google.`, 'success');
-    }
+    showToast(isUserAdmin ? 'Welcome Super Admin Ifeanyi! Admin Dashboard unlocked.' : `Welcome back, ${signedInName}! Signed in with Google.`, 'success');
     return newUser;
   };
 
@@ -170,6 +189,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const logout = () => {
+    void firebaseSignOut(auth);
     setUser(null);
     localStorage.removeItem('mn_user');
     setCurrentView('store');

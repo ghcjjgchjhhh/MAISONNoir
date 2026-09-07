@@ -303,24 +303,24 @@ export const AdminSettings: React.FC = () => {
         <div className="p-5 bg-white dark:bg-[#121212] border border-neutral-200/90 dark:border-neutral-800 rounded-2xl shadow-sm space-y-4 text-xs">
           <div className="flex items-center gap-2 pb-2 border-b border-neutral-100 dark:border-neutral-800">
             <AlertTriangle className="w-4 h-4 text-rose-500" />
-            <h3 className="font-bold text-neutral-900 dark:text-neutral-100">System Reset & Database Seed</h3>
+            <h3 className="font-bold text-neutral-900 dark:text-neutral-100">Clear Store Data</h3>
           </div>
 
           <p className="text-neutral-500 leading-relaxed">
-            Need to repopulate demonstration products, orders, inventory logs, and test Google customer accounts? You can reset local cache to default factory sample data.
+            Clear locally cached products, orders, customers, inventory logs, discounts, and marketing data. New records will come from real admin actions and customer activity.
           </p>
 
           <button
             type="button"
             onClick={() => {
-              if (confirm('Are you sure you want to restore default demo data? Any unbacked up items will be reset.')) {
+              if (confirm('Are you sure you want to clear store data? Any records not synchronized to Firestore will be removed.')) {
                 resetToDefaults();
               }
             }}
             className="flex items-center gap-2 px-4 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/20 rounded-xl font-bold transition-all"
           >
             <RotateCcw className="w-4 h-4" />
-            <span>Reset to Factory Demo Data</span>
+            <span>Clear Store Data</span>
           </button>
         </div>
 

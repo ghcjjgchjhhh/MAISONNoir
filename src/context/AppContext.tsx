@@ -26,6 +26,8 @@ import {
   INITIAL_NOTIFICATIONS,
   INITIAL_STORE_SETTINGS
 } from '../data/mockData';
+import { auth, googleProvider } from '../firebase';
+import { signInWithPopup } from 'firebase/auth';
 
 export type AdminTab = 
   | 'dashboard' 
@@ -222,14 +224,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   const loginWithGoogle = async (customEmail?: string, customName?: string): Promise<User> => {
-    const email = customEmail || 'ifeanyianoma2@gmail.com';
-    const name = customName || 'Ifeanyi Anoma';
-    const isUserAdmin = checkIsAdmin({ id: 'temp', name, email, role: 'customer', provider: 'google' });
+    if (!auth) {
+      throw new Error('Google sign-in is not configured.');
+    }
+
+    const result = await signInWithPopup(auth, googleProvider);
+    const firebaseUser = result.user;
+    const email = firebaseUser.email || customEmail || '';
+    const name = firebaseUser.displayName || customName || email.split('@')[0] || 'Google User';
+    const isUserAdmin = checkIsAdmin({ id: firebaseUser.uid, name, email, role: 'customer', provider: 'google' });
     const newUser: User = {
-      id: 'usr_' + Math.random().toString(36).substring(2, 9),
+      id: firebaseUser.uid,
       name: name,
       email: email,
-      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200&auto=format&fit=crop',
+      avatar: firebaseUser.photoURL || undefined,
       role: isUserAdmin ? 'admin' : 'customer',
       provider: 'google'
     };

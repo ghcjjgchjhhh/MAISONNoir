@@ -244,6 +244,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setUser(newUser);
     localStorage.setItem('mn_user', JSON.stringify(newUser));
+    recordCustomerLogin(newUser);
     setIsAuthModalOpen(false);
     showToast(`Signed in with Google as ${newUser.name}`);
     return newUser;
@@ -260,6 +261,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setUser(newUser);
     localStorage.setItem('mn_user', JSON.stringify(newUser));
+    recordCustomerLogin(newUser);
     setIsAuthModalOpen(false);
     showToast(`Signed in as ${newUser.name}`);
     return newUser;
@@ -752,6 +754,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setOrders(prev => [newOrder, ...prev]);
+    if (user) {
+      setCustomers(prev => prev.map(customer => customer.id === user.id
+        ? {
+            ...customer,
+            ordersCount: customer.ordersCount + 1,
+            totalSpent: customer.totalSpent + newOrder.total,
+            lastActive: new Date().toISOString()
+          }
+        : customer
+      ));
+    }
     setLatestPlacedOrder(newOrder);
 
     // Notify admin
@@ -879,6 +892,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     localStorage.setItem('mn_customers', JSON.stringify(customers));
   }, [customers]);
+
+  function recordCustomerLogin(signedInUser: User) {
+    const now = new Date().toISOString();
+    const session: CustomerSession = {
+      id: `session-${signedInUser.id}`,
+      device: /Mobi|Android/i.test(navigator.userAgent) ? 'Mobile device' : 'Desktop device',
+      deviceType: /Mobi|Android/i.test(navigator.userAgent) ? 'mobile' : 'desktop',
+      browser: navigator.userAgent,
+      ip: 'Unavailable from browser',
+      lastActive: now,
+      loginDate: now,
+      status: 'active'
+    };
+
+    setCustomers(prev => {
+      const existing = prev.find(customer => customer.id === signedInUser.id || customer.email === signedInUser.email);
+      if (!existing) {
+        return [{
+          id: signedInUser.id,
+          name: signedInUser.name,
+          email: signedInUser.email,
+          avatar: signedInUser.avatar,
+          provider: signedInUser.provider,
+          status: 'active',
+          ordersCount: 0,
+          totalSpent: 0,
+          createdAt: now,
+          lastActive: now,
+          sessions: [session]
+        }, ...prev];
+      }
+
+      const sessions = existing.sessions.some(item => item.id === session.id)
+        ? existing.sessions.map(item => item.id === session.id ? session : item)
+        : [session, ...existing.sessions];
+
+      return prev.map(customer => customer.id === existing.id
+        ? { ...customer, name: signedInUser.name, avatar: signedInUser.avatar, provider: signedInUser.provider, status: 'active', lastActive: now, sessions }
+        : customer
+      );
+    });
+  }
 
   const revokeCustomerSession = (customerId: string, sessionId: string) => {
     setCustomers(prev => prev.map(c => {

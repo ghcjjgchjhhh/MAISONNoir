@@ -17,13 +17,6 @@ import {
   StoreSettings
 } from '../types';
 import { 
-  INITIAL_PRODUCTS, 
-  INITIAL_ORDERS,
-  INITIAL_INVENTORY_LOGS,
-  INITIAL_CUSTOMERS,
-  INITIAL_DISCOUNTS,
-  INITIAL_MARKETING_BANNERS,
-  INITIAL_NOTIFICATIONS,
   INITIAL_STORE_SETTINGS
 } from '../data/mockData';
 import { auth, db, googleProvider } from '../firebase';
@@ -174,6 +167,7 @@ export function checkIsAdmin(user: User | null): boolean {
 }
 
 const isDemoCustomer = (customer: CustomerUser) => customer.id === 'cust-1' || customer.id === 'cust-2';
+const STORE_DATA_VERSION = 2;
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Theme State
@@ -276,6 +270,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('Signed out successfully.');
   };
 
+  useState(() => {
+    if (localStorage.getItem('mn_data_reset_v2') === 'complete') return true;
+
+    ['mn_products', 'mn_orders', 'mn_customers', 'mn_inventory_logs', 'mn_discounts', 'mn_marketing', 'mn_notifications', 'mn_cart'].forEach(key => {
+      localStorage.removeItem(key);
+    });
+    localStorage.setItem('mn_data_reset_v2', 'complete');
+    return true;
+  });
+
   // Store Settings
   const [storeSettings, setStoreSettings] = useState<StoreSettings>(() => {
     try {
@@ -299,9 +303,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [products, setProducts] = useState<Product[]>(() => {
     try {
       const saved = localStorage.getItem('mn_products');
-      return saved ? JSON.parse(saved) : INITIAL_PRODUCTS;
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return INITIAL_PRODUCTS;
+      return [];
     }
   });
 
@@ -313,9 +317,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [inventoryLogs, setInventoryLogs] = useState<InventoryLog[]>(() => {
     try {
       const saved = localStorage.getItem('mn_inventory_logs');
-      return saved ? JSON.parse(saved) : INITIAL_INVENTORY_LOGS;
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return INITIAL_INVENTORY_LOGS;
+      return [];
     }
   });
 
@@ -336,9 +340,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [notifications, setNotifications] = useState<AdminNotification[]>(() => {
     try {
       const saved = localStorage.getItem('mn_notifications');
-      return saved ? JSON.parse(saved) : INITIAL_NOTIFICATIONS;
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return INITIAL_NOTIFICATIONS;
+      return [];
     }
   });
 
@@ -631,9 +635,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [orders, setOrders] = useState<Order[]>(() => {
     try {
       const saved = localStorage.getItem('mn_orders');
-      return saved ? JSON.parse(saved) : INITIAL_ORDERS;
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return INITIAL_ORDERS;
+      return [];
     }
   });
 
@@ -973,9 +977,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [discounts, setDiscounts] = useState<DiscountCode[]>(() => {
     try {
       const saved = localStorage.getItem('mn_discounts');
-      return saved ? JSON.parse(saved) : INITIAL_DISCOUNTS;
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return INITIAL_DISCOUNTS;
+      return [];
     }
   });
 
@@ -1006,9 +1010,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [marketingBanners, setMarketingBanners] = useState<MarketingBanner[]>(() => {
     try {
       const saved = localStorage.getItem('mn_marketing');
-      return saved ? JSON.parse(saved) : INITIAL_MARKETING_BANNERS;
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return INITIAL_MARKETING_BANNERS;
+      return [];
     }
   });
 
@@ -1028,6 +1032,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return onSnapshot(storeRef, snapshot => {
       if (snapshot.exists()) {
         const data = snapshot.data();
+        if (data.schemaVersion !== STORE_DATA_VERSION) {
+          setProducts([]);
+          setOrders([]);
+          setCustomers([]);
+          setInventoryLogs([]);
+          setNotifications([]);
+          setDiscounts([]);
+          setMarketingBanners([]);
+          if (data.storeSettings) setStoreSettings(data.storeSettings as StoreSettings);
+          setCloudReady(true);
+          return;
+        }
         if (Array.isArray(data.products)) setProducts(data.products as Product[]);
         if (Array.isArray(data.orders)) setOrders(data.orders as Order[]);
         if (Array.isArray(data.customers)) {
@@ -1051,6 +1067,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!db || !cloudReady) return;
 
     void setDoc(doc(db, 'stores', 'maison-noir'), {
+      schemaVersion: STORE_DATA_VERSION,
       products,
       orders,
       customers,
@@ -1106,12 +1123,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.removeItem('mn_discounts');
     localStorage.removeItem('mn_marketing');
     localStorage.removeItem('mn_store_settings');
-    setProducts(INITIAL_PRODUCTS);
-    setOrders(INITIAL_ORDERS);
+    setProducts([]);
+    setOrders([]);
     setCustomers([]);
-    setInventoryLogs(INITIAL_INVENTORY_LOGS);
-    setDiscounts(INITIAL_DISCOUNTS);
-    setMarketingBanners(INITIAL_MARKETING_BANNERS);
+    setInventoryLogs([]);
+    setNotifications([]);
+    setDiscounts([]);
+    setMarketingBanners([]);
     setStoreSettings(INITIAL_STORE_SETTINGS);
     showToast('Factory demo data restored successfully.', 'success');
   };

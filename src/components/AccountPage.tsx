@@ -79,7 +79,10 @@ export const AccountPage: React.FC = () => {
           <aside className="lg:sticky lg:top-24 lg:self-start">
             <div className="bg-black text-white dark:bg-white dark:text-black p-5 sm:p-6 rounded-sm mb-3">
               <div className="flex items-center gap-3">
-                {user.avatar ? <img src={user.avatar} alt={user.name} className="h-12 w-12 rounded-full object-cover" /> : <div className="h-12 w-12 rounded-full bg-white/15 dark:bg-black/10 flex items-center justify-center font-serif text-xl">{user.name.charAt(0)}</div>}
+                <span className="relative h-12 w-12 rounded-full overflow-hidden bg-white/15 dark:bg-black/10 flex items-center justify-center font-serif text-xl">
+                  {user.name.charAt(0).toUpperCase()}
+                  {user.avatar && <img src={user.avatar} alt={user.name} onError={(event) => { event.currentTarget.style.display = 'none'; }} className="absolute inset-0 h-full w-full rounded-full object-cover object-center" />}
+                </span>
                 <div className="min-w-0"><p className="font-serif text-lg truncate">{user.name}</p><p className="text-[10px] opacity-60 truncate">{user.email}</p></div>
               </div>
               <p className="mt-5 text-[10px] uppercase tracking-[0.2em] opacity-60">Client account</p>

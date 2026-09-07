@@ -196,13 +196,10 @@ export const Header: React.FC<HeaderProps> = ({ onSearchChange, searchQuery = ''
                   aria-label="User profile"
                   title={user.name}
                 >
-                  {user.avatar ? (
-                    <img src={user.avatar} alt={user.name} className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover" />
-                  ) : (
-                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-neutral-900 text-white dark:bg-white dark:text-black flex items-center justify-center text-xs font-bold">
-                      {user.name.charAt(0).toUpperCase()}
-                    </div>
-                  )}
+                  <span className="relative block w-8 h-8 sm:w-9 sm:h-9 rounded-full overflow-hidden bg-neutral-900 text-white dark:bg-white dark:text-black flex items-center justify-center text-xs font-bold">
+                    {user.name.charAt(0).toUpperCase()}
+                    {user.avatar && <img src={user.avatar} alt={user.name} onError={(event) => { event.currentTarget.style.display = 'none'; }} className="absolute inset-0 w-full h-full rounded-full object-cover object-center" />}
+                  </span>
                 </button>
 
                 {/* Dropdown Menu */}

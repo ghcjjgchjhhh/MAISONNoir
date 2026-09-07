@@ -282,6 +282,18 @@ export const Header: React.FC<HeaderProps> = ({ onSearchChange, searchQuery = ''
 
           {/* Shopping Bag Button (ALWAYS visible on mobile & desktop) */}
           <button
+            onClick={() => user ? setAccountOpen(true) : setIsAuthModalOpen(true)}
+            id="header-account-btn"
+            className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 border border-neutral-300 dark:border-neutral-700 hover:border-black dark:hover:border-white rounded-full text-xs font-semibold uppercase tracking-wider transition-colors"
+            aria-label={user ? 'Open Account' : 'Sign in to open Account'}
+            title={user ? 'Open Account' : 'Sign in to open Account'}
+          >
+            <UserIcon className="w-4 h-4" />
+            <span className="hidden lg:inline">Account</span>
+          </button>
+
+          {/* Shopping Bag Button (ALWAYS visible on mobile & desktop) */}
+          <button
             onClick={() => setIsCartOpen(true)}
             id="header-cart-btn"
             className="relative p-2 text-neutral-800 dark:text-neutral-200 hover:text-black dark:hover:text-white transition-colors active:scale-95"

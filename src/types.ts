@@ -171,6 +171,28 @@ export interface CustomerUser {
   }[];
 }
 
+export interface CustomerAddress {
+  id: string;
+  fullName: string;
+  phone: string;
+  state: string;
+  city: string;
+  area: string;
+  street: string;
+  houseNumber?: string;
+  instructions?: string;
+  isDefault: boolean;
+}
+
+export interface CustomerReview {
+  id: string;
+  productId: number;
+  orderId: string;
+  rating: number;
+  text: string;
+  createdAt: string;
+}
+
 // Admin Notifications (Section 8)
 export interface AdminNotification {
   id: string;

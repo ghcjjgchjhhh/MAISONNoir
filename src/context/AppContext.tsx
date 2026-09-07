@@ -15,6 +15,8 @@ import {
   MarketingBanner,
   AdminNotification,
   StoreSettings
+  ,CustomerAddress,
+  CustomerReview
 } from '../types';
 import { 
   INITIAL_STORE_SETTINGS
@@ -50,6 +52,20 @@ interface AppContextType {
   logout: () => void;
   isAuthModalOpen: boolean;
   setIsAuthModalOpen: (open: boolean) => void;
+  accountOpen: boolean;
+  setAccountOpen: (open: boolean) => void;
+  wishlist: Product[];
+  toggleWishlist: (product: Product) => void;
+  recentlyViewed: Product[];
+  addRecentlyViewed: (product: Product) => void;
+  removeRecentlyViewed: (productId: number) => void;
+  addresses: CustomerAddress[];
+  saveAddress: (address: Omit<CustomerAddress, 'id'>, id?: string) => void;
+  deleteAddress: (id: string) => void;
+  setDefaultAddress: (id: string) => void;
+  reviews: CustomerReview[];
+  saveReview: (review: Omit<CustomerReview, 'id' | 'createdAt'>, id?: string) => void;
+  deleteReview: (id: string) => void;
 
   // Products & Inventory
   products: Product[];
@@ -219,6 +235,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const isAdmin = checkIsAdmin(user);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+
+  const [wishlist, setWishlist] = useState<Product[]>(() => {
+    try { return JSON.parse(localStorage.getItem(`mn_wishlist_${user?.id || 'guest'}`) || '[]'); } catch { return []; }
+  });
+  const [recentlyViewed, setRecentlyViewed] = useState<Product[]>(() => {
+    try { return JSON.parse(localStorage.getItem(`mn_recently_viewed_${user?.id || 'guest'}`) || '[]'); } catch { return []; }
+  });
+  const [addresses, setAddresses] = useState<CustomerAddress[]>(() => {
+    try { return JSON.parse(localStorage.getItem(`mn_addresses_${user?.id || 'guest'}`) || '[]'); } catch { return []; }
+  });
+  const [reviews, setReviews] = useState<CustomerReview[]>(() => {
+    try { return JSON.parse(localStorage.getItem(`mn_reviews_${user?.id || 'guest'}`) || '[]'); } catch { return []; }
+  });
+
+  useEffect(() => { localStorage.setItem(`mn_wishlist_${user?.id || 'guest'}`, JSON.stringify(wishlist)); }, [user, wishlist]);
+  useEffect(() => { localStorage.setItem(`mn_recently_viewed_${user?.id || 'guest'}`, JSON.stringify(recentlyViewed)); }, [user, recentlyViewed]);
+  useEffect(() => { localStorage.setItem(`mn_addresses_${user?.id || 'guest'}`, JSON.stringify(addresses)); }, [user, addresses]);
+  useEffect(() => { localStorage.setItem(`mn_reviews_${user?.id || 'guest'}`, JSON.stringify(reviews)); }, [user, reviews]);
+
+  const toggleWishlist = (product: Product) => {
+    setWishlist(prev => prev.some(item => item.id === product.id)
+      ? prev.filter(item => item.id !== product.id)
+      : [product, ...prev]);
+  };
+  const addRecentlyViewed = (product: Product) => {
+    setRecentlyViewed(prev => [product, ...prev.filter(item => item.id !== product.id)].slice(0, 12));
+  };
+  const removeRecentlyViewed = (productId: number) => setRecentlyViewed(prev => prev.filter(item => item.id !== productId));
+  const saveAddress = (address: Omit<CustomerAddress, 'id'>, id?: string) => {
+    setAddresses(prev => {
+      const next = id ? prev.map(item => item.id === id ? { ...address, id } : item) : [...prev, { ...address, id: `address-${Date.now()}` }];
+      return next.map((item, index) => ({ ...item, isDefault: address.isDefault ? item.id === (id || next[next.length - 1].id) : item.isDefault || index === 0 }));
+    });
+  };
+  const deleteAddress = (id: string) => setAddresses(prev => prev.filter(item => item.id !== id));
+  const setDefaultAddress = (id: string) => setAddresses(prev => prev.map(item => ({ ...item, isDefault: item.id === id })));
+  const saveReview = (review: Omit<CustomerReview, 'id' | 'createdAt'>, id?: string) => setReviews(prev => id ? prev.map(item => item.id === id ? { ...review, id, createdAt: item.createdAt } : item) : [...prev, { ...review, id: `review-${Date.now()}`, createdAt: new Date().toISOString() }]);
+  const deleteReview = (id: string) => setReviews(prev => prev.filter(item => item.id !== id));
 
   const loginWithGoogle = async (customEmail?: string, customName?: string): Promise<User> => {
     if (!auth) {
@@ -1165,6 +1220,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         logout,
         isAuthModalOpen,
         setIsAuthModalOpen,
+        accountOpen,
+        setAccountOpen,
+        wishlist,
+        toggleWishlist,
+        recentlyViewed,
+        addRecentlyViewed,
+        removeRecentlyViewed,
+        addresses,
+        saveAddress,
+        deleteAddress,
+        setDefaultAddress,
+        reviews,
+        saveReview,
+        deleteReview,
         products,
         addProduct,
         updateProduct,

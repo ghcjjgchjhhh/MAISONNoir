@@ -12,10 +12,11 @@ import { ProductQuickView } from './components/ProductQuickView';
 import { AuthModal } from './components/AuthModal';
 import { PolicyModal } from './components/PolicyModal';
 import { AdminDashboard } from './components/AdminDashboard';
+import { AccountPage } from './components/AccountPage';
 import { CheckCircle, AlertCircle, Info } from 'lucide-react';
 
 const MainLayout: React.FC = () => {
-  const { currentView, toast, isAdmin, cartCount, cartTotal, isCartOpen, setIsCartOpen } = useApp();
+  const { currentView, accountOpen, toast, isAdmin, cartCount, cartTotal, isCartOpen, setIsCartOpen } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
 
   const handleScrollToShop = () => {
@@ -34,7 +35,7 @@ const MainLayout: React.FC = () => {
 
       {/* Main View Router */}
       <main>
-        {currentView === 'admin' && isAdmin ? (
+        {accountOpen ? <AccountPage /> : currentView === 'admin' && isAdmin ? (
           <AdminDashboard />
         ) : (
           <>

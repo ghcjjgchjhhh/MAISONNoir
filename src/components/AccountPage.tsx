@@ -1,0 +1,140 @@
+import React, { useMemo, useState } from 'react';
+import { useApp } from '../context/AppContext';
+import { CustomerAddress, OrderStatus, Product } from '../types';
+import {
+  ArrowLeft, ArrowRight, Bell, Check, ChevronDown, ChevronRight, CircleHelp, Edit3,
+  Heart, LogOut, MapPin, Package, Plus, Save, Settings, ShieldCheck, ShoppingBag,
+  Star, Trash2, Truck, UserRound, X
+} from 'lucide-react';
+
+const orderFilters: Array<'All' | OrderStatus> = ['All', 'Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled'];
+
+type AccountSection = 'overview' | 'orders' | 'wishlist' | 'addresses' | 'rewards' | 'recent' | 'notifications' | 'reviews' | 'settings' | 'help';
+
+export const AccountPage: React.FC = () => {
+  const {
+    user, orders, wishlist, toggleWishlist, recentlyViewed, removeRecentlyViewed, addToCart,
+    setIsCartOpen, addresses, saveAddress, deleteAddress, setDefaultAddress, reviews, saveReview,
+    deleteReview, setAccountOpen, openPolicyModal, logout, showToast, products, setSelectedProductForQuickView
+  } = useApp();
+  const [section, setSection] = useState<AccountSection>('overview');
+  const [orderFilter, setOrderFilter] = useState<'All' | OrderStatus>('All');
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [addressEditing, setAddressEditing] = useState<CustomerAddress | null>(null);
+  const [showAddressForm, setShowAddressForm] = useState(false);
+  const [signOutPrompt, setSignOutPrompt] = useState(false);
+  const [deletePrompt, setDeletePrompt] = useState(false);
+  const [reviewProductId, setReviewProductId] = useState<number | null>(null);
+  const [reviewText, setReviewText] = useState('');
+  const [reviewRating, setReviewRating] = useState(5);
+  const customerOrders = useMemo(() => orders.filter(order => order.customer.email.toLowerCase() === user?.email.toLowerCase()), [orders, user]);
+  const filteredOrders = orderFilter === 'All' ? customerOrders : customerOrders.filter(order => order.status === orderFilter);
+  const purchasedItems = customerOrders.flatMap(order => order.items.map(item => ({ ...item, orderId: order.id })));
+  const reviewedProductIds = new Set(reviews.map(review => review.productId));
+
+  if (!user) return null;
+
+  const navigate = (next: AccountSection) => setSection(next);
+  const closeAccount = () => setAccountOpen(false);
+  const selectedOrder = customerOrders.find(order => order.id === selectedOrderId);
+
+  const handleAddressSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    saveAddress({
+      fullName: String(form.get('fullName') || ''), phone: String(form.get('phone') || ''), state: String(form.get('state') || ''),
+      city: String(form.get('city') || ''), area: String(form.get('area') || ''), street: String(form.get('street') || ''),
+      houseNumber: String(form.get('houseNumber') || ''), instructions: String(form.get('instructions') || ''),
+      isDefault: form.get('isDefault') === 'on'
+    }, addressEditing?.id);
+    setAddressEditing(null); setShowAddressForm(false); showToast('Delivery address saved.');
+  };
+
+  const submitReview = (productId: number, orderId: string) => {
+    saveReview({ productId, orderId, rating: reviewRating, text: reviewText });
+    setReviewProductId(null); setReviewText(''); showToast('Review saved.');
+  };
+
+  const navItems: Array<{ id: AccountSection; label: string; icon: React.ReactNode }> = [
+    { id: 'overview', label: 'Overview', icon: <UserRound className="h-4 w-4" /> },
+    { id: 'orders', label: 'My Orders', icon: <Package className="h-4 w-4" /> },
+    { id: 'wishlist', label: 'Wishlist', icon: <Heart className="h-4 w-4" /> },
+    { id: 'addresses', label: 'Addresses', icon: <MapPin className="h-4 w-4" /> },
+    { id: 'rewards', label: 'Discounts & Rewards', icon: <Star className="h-4 w-4" /> },
+    { id: 'recent', label: 'Recently Viewed', icon: <ChevronRight className="h-4 w-4" /> },
+    { id: 'notifications', label: 'Notifications', icon: <Bell className="h-4 w-4" /> },
+    { id: 'reviews', label: 'My Reviews', icon: <Edit3 className="h-4 w-4" /> },
+    { id: 'settings', label: 'Account Settings', icon: <Settings className="h-4 w-4" /> },
+    { id: 'help', label: 'Help & Support', icon: <CircleHelp className="h-4 w-4" /> }
+  ];
+
+  return (
+    <section className="min-h-screen bg-[#f7f7f5] dark:bg-[#0b0b0b] pt-20 sm:pt-24 pb-safe-nav px-4 sm:px-6 lg:px-10 text-neutral-900 dark:text-neutral-100">
+      <div className="max-w-7xl mx-auto">
+        <button onClick={closeAccount} className="mb-5 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-neutral-500 hover:text-black dark:hover:text-white"><ArrowLeft className="h-4 w-4" /> Back to Maison Noir</button>
+        <div className="grid lg:grid-cols-[230px_1fr] gap-6 lg:gap-10">
+          <aside className="lg:sticky lg:top-24 lg:self-start">
+            <div className="bg-black text-white dark:bg-white dark:text-black p-5 sm:p-6 rounded-sm mb-3">
+              <div className="flex items-center gap-3">
+                {user.avatar ? <img src={user.avatar} alt={user.name} className="h-12 w-12 rounded-full object-cover" /> : <div className="h-12 w-12 rounded-full bg-white/15 dark:bg-black/10 flex items-center justify-center font-serif text-xl">{user.name.charAt(0)}</div>}
+                <div className="min-w-0"><p className="font-serif text-lg truncate">{user.name}</p><p className="text-[10px] opacity-60 truncate">{user.email}</p></div>
+              </div>
+              <p className="mt-5 text-[10px] uppercase tracking-[0.2em] opacity-60">Client account</p>
+            </div>
+            <nav className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-1 gap-1 bg-white dark:bg-[#141414] border border-neutral-200 dark:border-neutral-800 p-2 rounded-sm">
+              {navItems.map(item => <button key={item.id} onClick={() => navigate(item.id)} className={`flex items-center gap-2 px-3 py-2.5 text-left text-xs rounded-sm transition-colors ${section === item.id ? 'bg-neutral-900 text-white dark:bg-white dark:text-black font-bold' : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-900'}`}>{item.icon}<span>{item.label}</span></button>)}
+            </nav>
+          </aside>
+
+          <main className="min-w-0">
+            <div className="border-b border-neutral-200 dark:border-neutral-800 pb-6 mb-7 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+              <div><p className="text-[10px] uppercase tracking-[0.3em] text-neutral-400 mb-2">Maison Noir / Client Portal</p><h1 className="font-serif text-4xl sm:text-5xl">Welcome back, {user.name.split(' ')[0]}</h1><p className="text-sm text-neutral-500 mt-2">Your private atelier for orders, saved pieces, and account details.</p></div>
+              <button onClick={() => navigate('settings')} className="inline-flex items-center justify-center gap-2 px-4 py-2.5 border border-neutral-300 dark:border-neutral-700 text-xs font-bold uppercase tracking-wider hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black"><Edit3 className="h-3.5 w-3.5" /> Edit Profile</button>
+            </div>
+
+            {section === 'overview' && <Overview navigate={navigate} orderCount={customerOrders.length} wishlistCount={wishlist.length} addressCount={addresses.length} recentlyViewed={recentlyViewed} setSelectedProductForQuickView={setSelectedProductForQuickView} addToCart={addToCart} />}
+
+            {section === 'orders' && <div className="space-y-5"><SectionTitle title="My Orders" subtitle="Every order placed with this account." /><div className="flex gap-2 overflow-x-auto pb-1">{orderFilters.map(filter => <button key={filter} onClick={() => setOrderFilter(filter)} className={`shrink-0 px-3 py-2 text-xs border ${orderFilter === filter ? 'bg-black text-white dark:bg-white dark:text-black' : 'border-neutral-300 dark:border-neutral-700 text-neutral-500'}`}>{filter}</button>)}</div>{filteredOrders.length === 0 ? <EmptyState title="No orders yet" text="Your confirmed purchases will appear here." /> : <div className="space-y-3">{filteredOrders.map(order => <button key={order.id} onClick={() => setSelectedOrderId(order.id)} className="w-full text-left bg-white dark:bg-[#141414] border border-neutral-200 dark:border-neutral-800 p-4 sm:p-5 hover:border-black dark:hover:border-white transition-colors"><div className="flex flex-wrap justify-between gap-3"><div><p className="font-bold text-sm">{order.id}</p><p className="text-xs text-neutral-500 mt-1">{new Date(order.createdAt).toLocaleDateString()} · {order.items.length} item(s)</p></div><span className="text-[10px] uppercase tracking-wider font-bold px-2.5 py-1 border border-neutral-300 dark:border-neutral-700">{order.status}</span></div><div className="mt-4 flex justify-between text-xs"><span className="text-neutral-500">{order.items.map(item => item.name).join(', ')}</span><span className="font-bold">${order.total.toFixed(2)}</span></div></button>)}</div>}</div>}
+
+            {section === 'wishlist' && <div className="space-y-5"><SectionTitle title="Wishlist / Saved Items" subtitle="Pieces you are considering for your wardrobe." />{wishlist.length === 0 ? <EmptyState title="Your wishlist is empty" text="Save a piece from the collection to see it here." /> : <ProductGrid products={wishlist} toggleWishlist={toggleWishlist} addToCart={addToCart} setSelectedProductForQuickView={setSelectedProductForQuickView} />}</div>}
+
+            {section === 'addresses' && <div className="space-y-5"><SectionTitle title="Delivery Addresses" subtitle="Saved only for your account." action={<button onClick={() => { setAddressEditing(null); setShowAddressForm(true); }} className="inline-flex items-center gap-2 px-4 py-2.5 bg-black text-white dark:bg-white dark:text-black text-xs font-bold"><Plus className="h-4 w-4" /> Add address</button>} />{showAddressForm && <AddressForm address={addressEditing} onSubmit={handleAddressSubmit} onCancel={() => setShowAddressForm(false)} />}{addresses.length === 0 && !showAddressForm ? <EmptyState title="No saved addresses" text="Add an address to make checkout faster." /> : <div className="grid sm:grid-cols-2 gap-4">{addresses.map(address => <div key={address.id} className="bg-white dark:bg-[#141414] border border-neutral-200 dark:border-neutral-800 p-5"><div className="flex justify-between gap-3"><div><p className="font-bold text-sm">{address.fullName}</p><p className="text-xs text-neutral-500 mt-2 leading-5">{address.houseNumber} {address.street}, {address.area}<br />{address.city}, {address.state}<br />{address.phone}</p></div>{address.isDefault && <span className="text-[10px] uppercase tracking-wider font-bold text-emerald-600">Default</span>}</div><div className="flex gap-3 mt-5 text-xs"><button onClick={() => { setAddressEditing(address); setShowAddressForm(true); }} className="text-neutral-500 hover:text-black dark:hover:text-white">Edit</button><button onClick={() => deleteAddress(address.id)} className="text-rose-600">Delete</button>{!address.isDefault && <button onClick={() => setDefaultAddress(address.id)} className="text-neutral-500">Make default</button>}</div></div>)}</div>}</div>}
+
+            {section === 'rewards' && <div className="space-y-5"><SectionTitle title="Discounts & Rewards" subtitle="Offers connected to your client account." /><div className="bg-black text-white dark:bg-white dark:text-black p-6 sm:p-8"><p className="text-[10px] uppercase tracking-[0.25em] opacity-60">Maison Noir rewards</p><p className="font-serif text-4xl mt-3">{customerOrders.length * 10} points</p><p className="text-xs opacity-70 mt-2">Points are earned from completed purchases.</p></div><div className="grid sm:grid-cols-2 gap-4"><div className="bg-white dark:bg-[#141414] border border-neutral-200 dark:border-neutral-800 p-5"><p className="font-bold text-sm">Available offers</p><p className="text-xs text-neutral-500 mt-2">No promotional codes are currently available.</p></div><div className="bg-white dark:bg-[#141414] border border-neutral-200 dark:border-neutral-800 p-5"><p className="font-bold text-sm">Redeemed offers</p><p className="text-xs text-neutral-500 mt-2">Your redeemed codes will appear here.</p></div></div></div>}
+
+            {section === 'recent' && <div className="space-y-5"><SectionTitle title="Recently Viewed" subtitle="Your latest looks from the collection." />{recentlyViewed.length === 0 ? <EmptyState title="Nothing here yet" text="Open a product to build your private trail." /> : <ProductGrid products={recentlyViewed} toggleWishlist={toggleWishlist} addToCart={addToCart} setSelectedProductForQuickView={setSelectedProductForQuickView} onRemove={removeRecentlyViewed} />}</div>}
+
+            {section === 'notifications' && <NotificationPanel />}
+
+            {section === 'reviews' && <div className="space-y-5"><SectionTitle title="My Reviews" subtitle="Only products from your completed purchases can be reviewed." />{purchasedItems.length === 0 ? <EmptyState title="No eligible reviews" text="After you place an order, purchased pieces will appear here." /> : <div className="space-y-3">{purchasedItems.map(item => <div key={`${item.orderId}-${item.id}`} className="bg-white dark:bg-[#141414] border border-neutral-200 dark:border-neutral-800 p-4 flex gap-4"><img src={item.img} alt="" className="h-20 w-16 object-cover bg-neutral-100" /><div className="flex-1"><p className="font-bold text-sm">{item.name}</p><p className="text-xs text-neutral-500 mt-1">Order {item.orderId}</p>{reviewedProductIds.has(item.id) ? <span className="inline-block mt-3 text-xs text-emerald-600">Review submitted</span> : <button onClick={() => setReviewProductId(item.id)} className="mt-3 text-xs font-bold underline">Write a review</button>}</div></div>)}</div>}{reviewProductId && <div className="fixed inset-0 z-50 modal-safe bg-black/60 flex items-center justify-center p-4"><form onSubmit={e => { e.preventDefault(); const item = purchasedItems.find(product => product.id === reviewProductId); if (item) submitReview(reviewProductId, item.orderId); }} className="bg-white dark:bg-[#141414] p-6 max-w-md w-full"><div className="flex justify-between"><h2 className="font-serif text-2xl">Your review</h2><button type="button" onClick={() => setReviewProductId(null)}><X className="h-5 w-5" /></button></div><div className="flex gap-2 my-5">{[1, 2, 3, 4, 5].map(r => <button type="button" key={r} onClick={() => setReviewRating(r)} className={r <= reviewRating ? 'text-amber-500' : 'text-neutral-300'}><Star className="h-6 w-6 fill-current" /></button>)}</div><textarea value={reviewText} onChange={e => setReviewText(e.target.value)} required rows={5} placeholder="Share your experience" className="w-full border border-neutral-300 dark:border-neutral-700 bg-transparent p-3 text-sm" /><button className="mt-4 w-full bg-black text-white dark:bg-white dark:text-black py-3 text-xs font-bold uppercase tracking-wider">Save review</button></form></div>}</div>}
+
+            {section === 'settings' && <SettingsPanel user={user} openPolicyModal={openPolicyModal} onDelete={() => { setDeletePrompt(false); logout(); setAccountOpen(false); showToast('Account signed out. Contact support to complete account deletion.'); }} />}
+            {section === 'help' && <HelpPanel openPolicyModal={openPolicyModal} />}
+          </main>
+        </div>
+      </div>
+
+      {selectedOrder && <OrderDetail order={selectedOrder} onClose={() => setSelectedOrderId(null)} />}
+      {signOutPrompt && <ConfirmModal title="Are you sure you want to sign out?" text="You will need to authenticate again to access your account." confirmLabel="Sign Out" onCancel={() => setSignOutPrompt(false)} onConfirm={() => { setSignOutPrompt(false); logout(); setAccountOpen(false); }} />}
+      {deletePrompt && <ConfirmModal title="Delete account permanently?" text="This removes this browser's account session and saved account data. This action cannot be undone." confirmLabel="Delete Account" danger onCancel={() => setDeletePrompt(false)} onConfirm={() => { setDeletePrompt(false); localStorage.removeItem('mn_wishlist'); localStorage.removeItem('mn_addresses'); localStorage.removeItem('mn_reviews'); logout(); setAccountOpen(false); }} />}
+      <div className="mt-10 flex justify-center"><button onClick={() => setSignOutPrompt(true)} className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-rose-600"><LogOut className="h-4 w-4" /> Sign Out</button></div>
+    </section>
+  );
+};
+
+const SectionTitle: React.FC<{ title: string; subtitle: string; action?: React.ReactNode }> = ({ title, subtitle, action }) => <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3"><div><h2 className="font-serif text-3xl">{title}</h2><p className="text-sm text-neutral-500 mt-1">{subtitle}</p></div>{action}</div>;
+const EmptyState: React.FC<{ title: string; text: string }> = ({ title, text }) => <div className="border border-dashed border-neutral-300 dark:border-neutral-700 p-10 text-center"><p className="font-serif text-2xl">{title}</p><p className="text-sm text-neutral-500 mt-2">{text}</p></div>;
+
+const Overview: React.FC<any> = ({ navigate, orderCount, wishlistCount, addressCount, recentlyViewed, setSelectedProductForQuickView, addToCart }) => <div className="space-y-6"><div className="grid sm:grid-cols-3 gap-3">{[['Orders', orderCount, 'orders'], ['Saved pieces', wishlistCount, 'wishlist'], ['Addresses', addressCount, 'addresses']].map(([label, count, id]) => <button key={String(id)} onClick={() => navigate(id)} className="text-left bg-white dark:bg-[#141414] border border-neutral-200 dark:border-neutral-800 p-5 hover:border-black dark:hover:border-white"><p className="text-3xl font-serif">{count}</p><p className="text-xs uppercase tracking-wider text-neutral-500 mt-2">{label}</p></button>)}</div><div><SectionTitle title="Recently in view" subtitle="Continue exploring your latest pieces." />{recentlyViewed.length ? <div className="mt-4"><ProductGrid products={recentlyViewed.slice(0, 4)} toggleWishlist={() => undefined} addToCart={addToCart} setSelectedProductForQuickView={setSelectedProductForQuickView} /></div> : <EmptyState title="Your account is ready" text="Explore the collection and save your first piece." />}</div></div>;
+
+const ProductGrid: React.FC<any> = ({ products, toggleWishlist, addToCart, setSelectedProductForQuickView, onRemove }) => <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">{products.map((product: Product) => <article key={product.id} className="bg-white dark:bg-[#141414] border border-neutral-200 dark:border-neutral-800 overflow-hidden"><button onClick={() => setSelectedProductForQuickView(product)} className="block w-full"><img src={product.img} alt={product.name} className="w-full aspect-[3/4] object-cover" /></button><div className="p-3"><p className="font-serif text-sm truncate">{product.name}</p><p className="text-xs text-neutral-500 mt-1">${product.price.toFixed(2)}</p><div className="flex gap-2 mt-3"><button onClick={() => addToCart(product, product.sizes?.[0])} className="flex-1 py-2 bg-black text-white dark:bg-white dark:text-black text-[10px] font-bold uppercase">Add</button><button onClick={() => toggleWishlist(product)} className="p-2 border border-neutral-300 dark:border-neutral-700" aria-label="Save item"><Heart className="h-3.5 w-3.5" /></button>{onRemove && <button onClick={() => onRemove(product.id)} className="p-2 border border-neutral-300 dark:border-neutral-700" aria-label="Remove item"><Trash2 className="h-3.5 w-3.5" /></button>}</div></div></article>)}</div>;
+
+const AddressForm: React.FC<{ address: CustomerAddress | null; onSubmit: (event: React.FormEvent<HTMLFormElement>) => void; onCancel: () => void }> = ({ address, onSubmit, onCancel }) => <form onSubmit={onSubmit} className="bg-white dark:bg-[#141414] border border-neutral-200 dark:border-neutral-800 p-5 grid sm:grid-cols-2 gap-3">{[['fullName','Full name'],['phone','Phone'],['state','State'],['city','City'],['area','Area'],['street','Street / address'],['houseNumber','Apartment / house number']].map(([name, label]) => <input key={name} name={name} defaultValue={address?.[name as keyof CustomerAddress] as string || ''} required={name !== 'houseNumber'} placeholder={label} className="border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-3 text-xs" />)}<textarea name="instructions" defaultValue={address?.instructions || ''} placeholder="Delivery instructions" className="sm:col-span-2 border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-3 text-xs" /><label className="sm:col-span-2 text-xs flex items-center gap-2"><input type="checkbox" name="isDefault" defaultChecked={address?.isDefault} /> Make default address</label><div className="sm:col-span-2 flex gap-3"><button className="bg-black text-white dark:bg-white dark:text-black px-4 py-2 text-xs font-bold"><Save className="inline h-3.5 w-3.5 mr-1" /> Save</button><button type="button" onClick={onCancel} className="px-4 py-2 text-xs text-neutral-500">Cancel</button></div></form>;
+
+const OrderDetail: React.FC<any> = ({ order, onClose }) => <div className="fixed inset-0 z-50 modal-safe bg-black/70 flex items-center justify-center p-4"><div className="bg-white dark:bg-[#141414] max-w-2xl w-full max-h-[90vh] overflow-y-auto p-5 sm:p-7"><div className="flex justify-between"><div><p className="text-[10px] uppercase tracking-widest text-neutral-500">Order details</p><h2 className="font-serif text-3xl mt-1">{order.id}</h2></div><button onClick={onClose}><X className="h-5 w-5" /></button></div><div className="mt-6 grid sm:grid-cols-3 gap-3 text-xs"><div><p className="text-neutral-500">Status</p><p className="font-bold mt-1">{order.status}</p></div><div><p className="text-neutral-500">Total</p><p className="font-bold mt-1">${order.total.toFixed(2)}</p></div><div><p className="text-neutral-500">Payment</p><p className="font-bold mt-1">{order.paymentStatus}</p></div></div><div className="mt-6 border-t border-neutral-200 dark:border-neutral-800 pt-5 space-y-3">{order.items.map((item: any) => <div key={`${item.id}-${item.size}`} className="flex gap-3"><img src={item.img} alt="" className="h-16 w-12 object-cover" /><div className="flex-1 text-xs"><p className="font-bold">{item.name}</p><p className="text-neutral-500">Qty {item.qty} · {item.size} · ${item.price.toFixed(2)}</p></div></div>)}</div><div className="mt-6 border-t border-neutral-200 dark:border-neutral-800 pt-5 text-xs"><p className="font-bold mb-2">Delivery address</p><p className="text-neutral-500 leading-5">{order.customer.fullName}<br />{order.customer.address}<br />{order.customer.city}, {order.customer.state}<br />{order.customer.phone}</p></div><div className="mt-6 flex items-center gap-2 overflow-x-auto text-[10px] uppercase tracking-wider">{(order.timeline || []).map((step: any) => <span key={`${step.status}-${step.timestamp}`} className="shrink-0 border border-neutral-300 dark:border-neutral-700 px-2 py-1">{step.status}</span>)}</div></div></div>;
+
+const NotificationPanel: React.FC = () => <div className="space-y-5"><SectionTitle title="Notifications" subtitle="Choose what you want to hear from the atelier." /><div className="bg-white dark:bg-[#141414] border border-neutral-200 dark:border-neutral-800 divide-y divide-neutral-200 dark:divide-neutral-800">{['Order confirmations','Order status and shipping updates','Delivery notifications','New arrivals and restocks','Discounts and promotions'].map((label, index) => <label key={label} className="flex items-center justify-between gap-4 p-4 text-sm"><span>{label}</span><input type="checkbox" defaultChecked={index < 3} /></label>)}</div></div>;
+
+const SettingsPanel: React.FC<any> = ({ user, openPolicyModal, onDelete }) => <div className="space-y-5"><SectionTitle title="Account Settings" subtitle="Your connected account and privacy controls." /><div className="bg-white dark:bg-[#141414] border border-neutral-200 dark:border-neutral-800 p-5 space-y-4"><div className="flex items-center gap-3"><ShieldCheck className="h-5 w-5 text-emerald-600" /><div><p className="font-bold text-sm">Connected Google account</p><p className="text-xs text-neutral-500 mt-1">{user.email}</p></div></div><div className="border-t border-neutral-200 dark:border-neutral-800 pt-4 grid sm:grid-cols-2 gap-3"><button onClick={() => openPolicyModal('legal')} className="text-left text-xs text-neutral-500 hover:text-black dark:hover:text-white">Privacy Policy <ChevronRight className="inline h-3 w-3" /></button><button onClick={() => openPolicyModal('legal')} className="text-left text-xs text-neutral-500 hover:text-black dark:hover:text-white">Terms & Conditions <ChevronRight className="inline h-3 w-3" /></button><button className="text-left text-xs text-neutral-500">Help & Support <ChevronRight className="inline h-3 w-3" /></button><button onClick={onDelete} className="text-left text-xs text-rose-600">Delete account permanently <ChevronRight className="inline h-3 w-3" /></button></div></div></div>;
+const HelpPanel: React.FC<any> = ({ openPolicyModal }) => <div className="space-y-5"><SectionTitle title="Help & Support" subtitle="Guidance for orders, delivery, returns, payment, and account access." /><div className="grid sm:grid-cols-2 gap-3">{['Frequently Asked Questions','Order problems','Delivery problems','Returns and exchanges','Payment questions','Account problems'].map(label => <button key={label} onClick={() => openPolicyModal('all')} className="text-left bg-white dark:bg-[#141414] border border-neutral-200 dark:border-neutral-800 p-5 hover:border-black dark:hover:border-white"><p className="font-bold text-sm">{label}</p><p className="text-xs text-neutral-500 mt-2">View Maison Noir guidance</p></button>)}</div><a href="mailto:hello@maisonnoir.com" className="inline-flex items-center gap-2 text-xs font-bold underline">Contact concierge <ArrowRight className="h-3.5 w-3.5" /></a></div>;
+const ConfirmModal: React.FC<any> = ({ title, text, confirmLabel, onCancel, onConfirm, danger }) => <div className="fixed inset-0 z-[60] modal-safe bg-black/70 flex items-center justify-center p-4"><div className="bg-white dark:bg-[#141414] p-6 max-w-sm w-full"><h2 className="font-serif text-2xl">{title}</h2><p className="text-sm text-neutral-500 mt-3 leading-6">{text}</p><div className="flex justify-end gap-3 mt-6"><button onClick={onCancel} className="px-4 py-2 text-xs text-neutral-500">Cancel</button><button onClick={onConfirm} className={`px-4 py-2 text-xs font-bold text-white ${danger ? 'bg-rose-600' : 'bg-black dark:bg-white dark:text-black'}`}>{confirmLabel}</button></div></div></div>;

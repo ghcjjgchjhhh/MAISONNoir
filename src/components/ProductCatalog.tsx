@@ -1,14 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { Product, ProductCategory } from '../types';
-import { Eye, ShoppingBag, Check, Sparkles, Filter } from 'lucide-react';
+import { Eye, ShoppingBag, Check, Sparkles, Filter, Heart } from 'lucide-react';
 
 interface ProductCatalogProps {
   searchQuery: string;
 }
 
 export const ProductCatalog: React.FC<ProductCatalogProps> = ({ searchQuery }) => {
-  const { products, addToCart, setSelectedProductForQuickView } = useApp();
+  const { products, addToCart, setSelectedProductForQuickView, addRecentlyViewed, toggleWishlist, wishlist } = useApp();
   const [selectedCategory, setSelectedCategory] = useState<ProductCategory>('all');
   const [sortBy, setSortBy] = useState<'featured' | 'price-asc' | 'price-desc'>('featured');
   const [addedItemEffect, setAddedItemEffect] = useState<number | null>(null);
@@ -162,7 +162,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ searchQuery }) =
                 {filteredProducts.map((product) => (
                   <div
                     key={product.id}
-                    onClick={() => setSelectedProductForQuickView(product)}
+                    onClick={() => { addRecentlyViewed(product); setSelectedProductForQuickView(product); }}
                     className="group flex flex-col bg-neutral-50/50 dark:bg-neutral-900/30 border border-neutral-200 dark:border-neutral-800 rounded-sm overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer"
                   >
                     {/* Image Container with 3:4 Aspect Ratio */}
@@ -216,10 +216,18 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ searchQuery }) =
                             </>
                           )}
                         </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); toggleWishlist(product); }}
+                          className="p-3 bg-white/90 text-black hover:bg-white transition-colors"
+                          title={wishlist.some(item => item.id === product.id) ? 'Remove from wishlist' : 'Save to wishlist'}
+                        >
+                          <Heart className={`w-4 h-4 ${wishlist.some(item => item.id === product.id) ? 'fill-current' : ''}`} />
+                        </button>
                         
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
+                            addRecentlyViewed(product);
                             setSelectedProductForQuickView(product);
                           }}
                           className="p-3 bg-black/60 text-white hover:bg-black text-xs transition-colors"

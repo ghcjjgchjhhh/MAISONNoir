@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { X, ShoppingBag, Truck, ShieldCheck, Check } from 'lucide-react';
+import { X, ShoppingBag, Truck, ShieldCheck, Check, Heart } from 'lucide-react';
 
 export const ProductQuickView: React.FC = () => {
-  const { selectedProductForQuickView, setSelectedProductForQuickView, addToCart } = useApp();
+  const { selectedProductForQuickView, setSelectedProductForQuickView, addToCart, addRecentlyViewed, toggleWishlist, wishlist } = useApp();
   const product = selectedProductForQuickView;
 
   const [selectedSize, setSelectedSize] = useState<string>(() => {
@@ -15,6 +15,7 @@ export const ProductQuickView: React.FC = () => {
   if (!product) return null;
 
   const handleAdd = () => {
+    addRecentlyViewed(product);
     addToCart(product, selectedSize, quantity);
     setIsAdded(true);
     setTimeout(() => {
@@ -149,6 +150,13 @@ export const ProductQuickView: React.FC = () => {
                   <span>Add to Bag — ${(product.price * quantity).toFixed(2)}</span>
                 </>
               )}
+            </button>
+            <button
+              onClick={() => toggleWishlist(product)}
+              className="w-full py-3 border border-neutral-300 dark:border-neutral-700 text-xs uppercase tracking-[0.18em] font-bold flex items-center justify-center gap-2"
+            >
+              <Heart className={`w-4 h-4 ${wishlist.some(item => item.id === product.id) ? 'fill-current' : ''}`} />
+              {wishlist.some(item => item.id === product.id) ? 'Saved to Wishlist' : 'Save to Wishlist'}
             </button>
 
             {/* Quick Delivery Badges */}

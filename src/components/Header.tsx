@@ -34,7 +34,8 @@ export const Header: React.FC<HeaderProps> = ({ onSearchChange, searchQuery = ''
     logout,
     currentView,
     setCurrentView,
-    openPolicyModal
+    openPolicyModal,
+    setAccountOpen
   } = useApp();
 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -232,6 +233,14 @@ export const Header: React.FC<HeaderProps> = ({ onSearchChange, searchQuery = ''
                         Executive Dashboard
                       </button>
                     )}
+
+                    <button
+                      onClick={() => { setAccountOpen(true); setIsUserMenuOpen(false); }}
+                      className="w-full text-left px-3 py-2 text-xs font-medium rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2 text-neutral-700 dark:text-neutral-300"
+                    >
+                      <UserIcon className="w-4 h-4 text-neutral-500" />
+                      My Account
+                    </button>
 
                     <button
                       onClick={() => {

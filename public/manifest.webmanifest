@@ -1,0 +1,20 @@
+{
+  "name": "Maison Noir — Timeless Fashion",
+  "short_name": "Maison Noir",
+  "description": "Maison Noir luxury fashion storefront and client portal.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#050505",
+  "theme_color": "#050505",
+  "categories": ["shopping", "fashion"],
+  "icons": [
+    {
+      "src": "/icons/maison-noir.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

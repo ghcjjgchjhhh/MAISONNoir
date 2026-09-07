@@ -1,0 +1,6 @@
+{
+  "name": "Maison Noir",
+  "description": "Timeless luxury fashion e-commerce experience with Google authentication, Pay on Delivery checkout, and an exclusive executive admin dashboard for order and catalog management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

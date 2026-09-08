@@ -32,7 +32,9 @@ export const AccountPage: React.FC = () => {
   const [profileName, setProfileName] = useState(user?.name || '');
   const customerOrders = useMemo(() => orders.filter(order =>
     order.customerId === user?.id ||
-    order.customer.email.toLowerCase() === user?.email.toLowerCase()
+    order.customer.email.toLowerCase() === user?.email.toLowerCase() ||
+    (!order.customerId && order.customer.email.endsWith('@client.com') &&
+      order.customer.fullName.trim().toLowerCase() === user?.name.trim().toLowerCase())
   ), [orders, user]);
   const filteredOrders = orderFilter === 'All' ? customerOrders : customerOrders.filter(order => order.status === orderFilter);
   const purchasedItems = customerOrders.flatMap(order => order.items.map(item => ({ ...item, orderId: order.id })));

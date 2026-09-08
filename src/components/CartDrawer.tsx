@@ -12,7 +12,10 @@ export const CartDrawer: React.FC = () => {
     cartSubtotal, 
     shippingFee, 
     cartTotal,
-    setIsCheckoutOpen
+    setIsCheckoutOpen,
+    user,
+    setIsAuthModalOpen,
+    showToast
   } = useApp();
 
   if (!isCartOpen) return null;
@@ -22,6 +25,12 @@ export const CartDrawer: React.FC = () => {
   const progressPercent = Math.min(100, (cartSubtotal / freeShippingThreshold) * 100);
 
   const handleCheckoutClick = () => {
+    if (!user) {
+      setIsCartOpen(false);
+      setIsAuthModalOpen(true);
+      showToast('Please sign in before placing an order.', 'info');
+      return;
+    }
     setIsCartOpen(false);
     setIsCheckoutOpen(true);
   };

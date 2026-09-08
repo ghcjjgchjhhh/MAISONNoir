@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { 
   User, 
   Product, 
@@ -732,6 +732,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return [];
     }
   });
+  const pendingOrderIds = useRef(new Set<string>());
 
   useEffect(() => {
     localStorage.setItem('mn_orders', JSON.stringify(orders));
@@ -877,6 +878,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     newOrder.discount = discountAmount || undefined;
     newOrder.total = Math.max(0, newOrder.subtotal + newOrder.shipping - discountAmount);
+    pendingOrderIds.current.add(newOrder.id);
     setOrders(prev => [newOrder, ...prev]);
     if (user) {
       recordCustomerLogin(user);
@@ -1193,7 +1195,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const shouldSeedCatalog = data.products.length === 0;
           setProducts(shouldSeedCatalog ? INITIAL_PRODUCTS : data.products as Product[]);
         }
-        if (Array.isArray(data.orders)) setOrders(data.orders as Order[]);
+        if (Array.isArray(data.orders)) {
+          const cloudOrders = data.orders as Order[];
+          const cloudOrderIds = new Set(cloudOrders.map(order => order.id));
+          const pendingIds = new Set(pendingOrderIds.current);
+          setOrders(currentOrders => [
+            ...currentOrders.filter(order => pendingIds.has(order.id) && !cloudOrderIds.has(order.id)),
+            ...cloudOrders
+          ]);
+          pendingIds.forEach(orderId => {
+            if (cloudOrderIds.has(orderId)) pendingOrderIds.current.delete(orderId);
+          });
+        }
         if (Array.isArray(data.customers)) {
           setCustomers((data.customers as CustomerUser[]).filter(customer => !isDemoCustomer(customer)));
         }

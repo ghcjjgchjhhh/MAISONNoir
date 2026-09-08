@@ -26,6 +26,7 @@ export const CheckoutModal: React.FC = () => {
     shippingFee, 
     cartTotal, 
     placeOrder, 
+    calculateDiscount,
     user,
     isAdmin,
     setCurrentView,
@@ -54,6 +55,8 @@ export const CheckoutModal: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [discountCode, setDiscountCode] = useState('');
+  const [appliedDiscount, setAppliedDiscount] = useState(0);
 
   if (!isCheckoutOpen) return null;
 
@@ -95,7 +98,7 @@ export const CheckoutModal: React.FC = () => {
     // Realistic placement delay
     setTimeout(async () => {
       try {
-        const order = await placeOrder(deliveryDetails, selectedPaymentMethod);
+        const order = await placeOrder(deliveryDetails, selectedPaymentMethod, discountCode);
         setCompletedOrder(order);
       } catch (err) {
         setFormError('An error occurred placing your order. Please try again.');
@@ -563,6 +566,10 @@ export const CheckoutModal: React.FC = () => {
                   </div>
 
                   {/* Totals Breakdown */}
+                  <div className="flex gap-2 pt-4">
+                    <input value={discountCode} onChange={event => { setDiscountCode(event.target.value.toUpperCase()); setAppliedDiscount(0); }} placeholder="Promotion code" className="min-w-0 flex-1 border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2 text-xs" />
+                    <button type="button" onClick={() => { const amount = calculateDiscount(discountCode, cartSubtotal); setAppliedDiscount(amount); setFormError(amount ? null : 'This promotion code is invalid or not available for this order.'); }} className="border border-neutral-900 dark:border-neutral-100 px-3 py-2 text-[10px] font-bold uppercase">Apply</button>
+                  </div>
                   <div className="space-y-2 text-xs pt-4 mt-4 border-t border-neutral-200 dark:border-neutral-800">
                     <div className="flex justify-between text-neutral-500">
                       <span>Subtotal</span>
@@ -572,9 +579,10 @@ export const CheckoutModal: React.FC = () => {
                       <span>Courier Delivery</span>
                       <span>{shippingFee === 0 ? <strong className="text-emerald-600">Free Express</strong> : `$${shippingFee.toFixed(2)}`}</span>
                     </div>
+                    {appliedDiscount > 0 && <div className="flex justify-between text-emerald-600"><span>Promotion</span><span>-${appliedDiscount.toFixed(2)}</span></div>}
                     <div className="flex justify-between text-base font-bold text-neutral-900 dark:text-neutral-100 pt-3 border-t border-neutral-200 dark:border-neutral-800">
                       <span>Total</span>
-                      <span>${cartTotal.toFixed(2)}</span>
+                      <span>${Math.max(0, cartTotal - appliedDiscount).toFixed(2)}</span>
                     </div>
                   </div>
 

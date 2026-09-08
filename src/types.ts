@@ -89,6 +89,7 @@ export interface OrderItem {
 
 export interface Order {
   id: string;
+  customerId?: string;
   createdAt: string;
   customer: {
     fullName: string;

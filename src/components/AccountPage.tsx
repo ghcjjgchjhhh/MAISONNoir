@@ -30,7 +30,10 @@ export const AccountPage: React.FC = () => {
   const [reviewText, setReviewText] = useState('');
   const [reviewRating, setReviewRating] = useState(5);
   const [profileName, setProfileName] = useState(user?.name || '');
-  const customerOrders = useMemo(() => orders.filter(order => order.customer.email.toLowerCase() === user?.email.toLowerCase()), [orders, user]);
+  const customerOrders = useMemo(() => orders.filter(order =>
+    order.customerId === user?.id ||
+    order.customer.email.toLowerCase() === user?.email.toLowerCase()
+  ), [orders, user]);
   const filteredOrders = orderFilter === 'All' ? customerOrders : customerOrders.filter(order => order.status === orderFilter);
   const purchasedItems = customerOrders.flatMap(order => order.items.map(item => ({ ...item, orderId: order.id })));
   const reviewedProductIds = new Set(reviews.map(review => review.productId));

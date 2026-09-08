@@ -23,7 +23,7 @@ import {
   INITIAL_STORE_SETTINGS
 } from '../data/mockData';
 import { auth, db, googleProvider } from '../firebase';
-import { signInWithPopup } from 'firebase/auth';
+import { onAuthStateChanged, signInAnonymously, signInWithPopup } from 'firebase/auth';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 
 export type AdminTab = 
@@ -107,7 +107,8 @@ interface AppContextType {
   selectedPaymentMethod: PaymentMethod;
   setSelectedPaymentMethod: (method: PaymentMethod) => void;
   orders: Order[];
-  placeOrder: (details: DeliveryDetails, paymentMethod: PaymentMethod) => Promise<Order>;
+  placeOrder: (details: DeliveryDetails, paymentMethod: PaymentMethod, discountCode?: string) => Promise<Order>;
+  calculateDiscount: (code: string, subtotal?: number) => number;
   latestPlacedOrder: Order | null;
   setLatestPlacedOrder: (order: Order | null) => void;
   updateOrderStatus: (orderId: string, status: OrderStatus) => void;
@@ -264,6 +265,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => { localStorage.setItem(`mn_recently_viewed_${user?.id || 'guest'}`, JSON.stringify(recentlyViewed)); }, [user, recentlyViewed]);
   useEffect(() => { localStorage.setItem(`mn_addresses_${user?.id || 'guest'}`, JSON.stringify(addresses)); }, [user, addresses]);
   useEffect(() => { localStorage.setItem(`mn_reviews_${user?.id || 'guest'}`, JSON.stringify(reviews)); }, [user, reviews]);
+
+  useEffect(() => {
+    const read = <T,>(key: string, fallback: T): T => {
+      try { return JSON.parse(localStorage.getItem(`${key}_${user?.id || 'guest'}`) || JSON.stringify(fallback)); } catch { return fallback; }
+    };
+    setWishlist(read('mn_wishlist', []));
+    setRecentlyViewed(read('mn_recently_viewed', []));
+    setAddresses(read('mn_addresses', []));
+    setReviews(read('mn_reviews', []));
+  }, [user?.id]);
 
   const toggleWishlist = (product: Product) => {
     setWishlist(prev => prev.some(item => item.id === product.id)
@@ -629,7 +640,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Cart
   const [cart, setCart] = useState<CartItem[]>(() => {
     try {
-      const saved = localStorage.getItem('mn_cart');
+      const saved = localStorage.getItem(`mn_cart_${user?.id || 'guest'}`);
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -637,8 +648,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   useEffect(() => {
-    localStorage.setItem('mn_cart', JSON.stringify(cart));
-  }, [cart]);
+    localStorage.setItem(`mn_cart_${user?.id || 'guest'}`, JSON.stringify(cart));
+  }, [cart, user?.id]);
+
+  // Keep cart line items linked to the live catalog so admin edits are reflected immediately.
+  useEffect(() => {
+    setCart(current => current
+      .map(item => {
+        const currentProduct = products.find(product => product.id === item.product.id);
+        return currentProduct ? { ...item, product: currentProduct } : item;
+      })
+      .filter(item => products.some(product => product.id === item.product.id)));
+  }, [products]);
 
   const [isCartOpen, setIsCartOpen] = useState(false);
 
@@ -647,15 +668,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const chosenColor = color || (product.colors && product.colors.length > 0 ? product.colors[0] : undefined);
     
     // Check stock availability
-    if (product.stock <= 0) {
+    const selectedVariant = product.variants?.find(variant => variant.size === chosenSize && (!chosenColor || variant.color === chosenColor));
+    const availableStock = selectedVariant?.stock ?? product.stock;
+    if (availableStock <= 0 || qty > availableStock) {
       showToast(`Sorry, ${product.name} is currently out of stock.`, 'error');
       return;
     }
 
     setCart(prev => {
-      const index = prev.findIndex(item => item.product.id === product.id && item.size === chosenSize);
+      const index = prev.findIndex(item => item.product.id === product.id && item.size === chosenSize && item.color === chosenColor);
       if (index > -1) {
         const next = [...prev];
+        if (next[index].qty + qty > availableStock) {
+          showToast(`Only ${availableStock} unit(s) of ${product.name} are available.`, 'error');
+          return prev;
+        }
         next[index] = { ...next[index], qty: next[index].qty + qty };
         return next;
       } else {
@@ -711,9 +738,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [orders]);
 
   // Place Order with automatic stock decrement (Specs 20 & 21)
-  const placeOrder = async (details: DeliveryDetails, paymentMethod: PaymentMethod): Promise<Order> => {
+  const calculateDiscount = (code: string, subtotal = cartSubtotal) => {
+    const discount = discounts.find(item => item.code.toLowerCase() === code.trim().toLowerCase() && item.isActive);
+    if (!discount || (discount.minOrderAmount || discount.minOrder || 0) > subtotal) return 0;
+    const now = Date.now();
+    if (discount.startDate && new Date(discount.startDate).getTime() > now) return 0;
+    const endDate = discount.endDate || discount.expiryDate;
+    if (endDate && new Date(endDate).getTime() < now) return 0;
+    const raw = discount.type === 'percentage' || discount.type === 'flash_sale'
+      ? subtotal * (discount.value / 100)
+      : discount.value;
+    return Math.min(subtotal, discount.maxDiscountAmount || raw);
+  };
+
+  const placeOrder = async (details: DeliveryDetails, paymentMethod: PaymentMethod, discountCode?: string): Promise<Order> => {
     const orderNumber = Math.floor(1000 + Math.random() * 9000);
     const orderId = `ORD-${orderNumber}`;
+    const discountAmount = discountCode ? calculateDiscount(discountCode) : 0;
+
+    for (const item of cart) {
+      const currentProduct = products.find(product => product.id === item.product.id);
+      const currentVariant = currentProduct?.variants?.find(variant => variant.size === item.size && (!item.color || variant.color === item.color));
+      const availableStock = currentVariant?.stock ?? currentProduct?.stock ?? 0;
+      if (!currentProduct || item.qty > availableStock) {
+        throw new Error(`${item.product.name} is no longer available in the requested quantity.`);
+      }
+    }
 
     // Decrement stock in products and log to audit trail
     setProducts(prevProducts => {
@@ -790,6 +840,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const newOrder: Order = {
       id: orderId,
+      customerId: user?.id,
       createdAt: new Date().toISOString(),
       customer: {
         fullName: details.fullName,
@@ -824,8 +875,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         : 'Awaiting Bank Confirmation'
     };
 
+    newOrder.discount = discountAmount || undefined;
+    newOrder.total = Math.max(0, newOrder.subtotal + newOrder.shipping - discountAmount);
     setOrders(prev => [newOrder, ...prev]);
     if (user) {
+      recordCustomerLogin(user);
       setCustomers(prev => prev.map(customer => customer.id === user.id
         ? {
             ...customer,
@@ -847,6 +901,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     clearCart();
+    if (discountCode && discountAmount > 0) {
+      const matchedCode = discounts.find(item => item.code.toLowerCase() === discountCode.trim().toLowerCase());
+      if (matchedCode) {
+        setDiscounts(prev => prev.map(item => item.id === matchedCode.id
+          ? { ...item, usedCount: item.usedCount + 1, totalDiscountGiven: (item.totalDiscountGiven || 0) + discountAmount, revenueGenerated: (item.revenueGenerated || 0) + newOrder.total }
+          : item));
+      }
+    }
     setIsCheckoutOpen(false);
     setIsCartOpen(false);
     showToast(`Order #${newOrder.id} placed successfully!`, 'success');
@@ -1001,7 +1063,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         : [session, ...existing.sessions];
 
       return prev.map(customer => customer.id === existing.id
-        ? { ...customer, name: signedInUser.name, avatar: signedInUser.avatar, provider: signedInUser.provider, status: 'active', lastActive: now, sessions }
+        ? { ...customer, id: signedInUser.id, name: signedInUser.name, email: signedInUser.email, avatar: signedInUser.avatar, provider: signedInUser.provider, status: 'active', lastActive: now, sessions }
         : customer
       );
     });
@@ -1086,6 +1148,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [marketingBanners]);
 
   const [cloudReady, setCloudReady] = useState(false);
+  const [firebaseUserReady, setFirebaseUserReady] = useState(!auth);
+
+  useEffect(() => {
+    if (!auth) return;
+    return onAuthStateChanged(auth, firebaseUser => {
+      setFirebaseUserReady(true);
+      if (!firebaseUser) {
+        setFirebaseUserReady(false);
+        void signInAnonymously(auth).catch(error => {
+          console.error('Anonymous Firebase sign-in failed:', error);
+        });
+        return;
+      }
+      if (firebaseUser.isAnonymous) return;
+      setUser(previous => {
+        if (previous?.id === firebaseUser.uid) return previous;
+        const restoredUser: User = {
+          id: firebaseUser.uid,
+          name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Google User',
+          email: firebaseUser.email || '',
+          avatar: firebaseUser.photoURL || undefined,
+          role: checkIsAdmin({ id: firebaseUser.uid, name: firebaseUser.displayName || '', email: firebaseUser.email || '', role: 'customer', provider: 'google' }) ? 'admin' : 'customer',
+          provider: 'google'
+        };
+        localStorage.setItem('mn_user', JSON.stringify(restoredUser));
+        recordCustomerLogin(restoredUser);
+        return restoredUser;
+      });
+    });
+  }, []);
 
   useEffect(() => {
     if (!db) {
@@ -1097,18 +1189,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return onSnapshot(storeRef, snapshot => {
       if (snapshot.exists()) {
         const data = snapshot.data();
-        if (data.schemaVersion !== STORE_DATA_VERSION) {
-          setProducts([]);
-          setOrders([]);
-          setCustomers([]);
-          setInventoryLogs([]);
-          setNotifications([]);
-          setDiscounts([]);
-          setMarketingBanners([]);
-          if (data.storeSettings) setStoreSettings(data.storeSettings as StoreSettings);
-          setCloudReady(true);
-          return;
-        }
         if (Array.isArray(data.products)) {
           const shouldSeedCatalog = data.products.length === 0;
           setProducts(shouldSeedCatalog ? INITIAL_PRODUCTS : data.products as Product[]);
@@ -1132,7 +1212,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   useEffect(() => {
-    if (!db || !auth?.currentUser || !cloudReady) return;
+    if (!db || !auth?.currentUser || !firebaseUserReady || !cloudReady) return;
 
     void setDoc(doc(db, 'stores', 'maison-noir'), {
       schemaVersion: STORE_DATA_VERSION,
@@ -1149,7 +1229,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }, { merge: true }).catch(error => {
       console.error('Firestore store write failed:', error);
     });
-  }, [cloudReady, products, orders, customers, inventoryLogs, notifications, discounts, marketingBanners, storeSettings]);
+  }, [cloudReady, firebaseUserReady, products, orders, customers, inventoryLogs, notifications, discounts, marketingBanners, storeSettings]);
 
   const addMarketingBanner = (banner: Omit<MarketingBanner, 'id'>) => {
     const newBanner: MarketingBanner = {
@@ -1281,6 +1361,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSelectedPaymentMethod,
         orders,
         placeOrder,
+        calculateDiscount,
         latestPlacedOrder,
         setLatestPlacedOrder,
         updateOrderStatus,

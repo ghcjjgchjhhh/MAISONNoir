@@ -1234,10 +1234,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const cloudOrders = data.orders as Order[];
           const cloudOrderIds = new Set(cloudOrders.map(order => order.id));
           const pendingIds = new Set(pendingOrderIds.current);
-          setOrders(currentOrders => [
+          setOrders(currentOrders => {
+            const mergedOrders = [
             ...currentOrders.filter(order => pendingIds.has(order.id) && !cloudOrderIds.has(order.id)),
             ...cloudOrders
-          ]);
+            ];
+            return JSON.stringify(currentOrders) === JSON.stringify(mergedOrders) ? currentOrders : mergedOrders;
+          });
           pendingIds.forEach(orderId => {
             if (cloudOrderIds.has(orderId)) pendingOrderIds.current.delete(orderId);
           });
@@ -1247,7 +1250,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
         if (Array.isArray(data.inventoryLogs)) setInventoryLogs(data.inventoryLogs as InventoryLog[]);
         if (Array.isArray(data.notifications)) setNotifications(data.notifications as AdminNotification[]);
-        if (Array.isArray(data.activities)) setActivities(data.activities as CustomerActivity[]);
+        if (Array.isArray(data.activities)) {
+          const cloudActivities = data.activities as CustomerActivity[];
+          setActivities(currentActivities => JSON.stringify(currentActivities) === JSON.stringify(cloudActivities) ? currentActivities : cloudActivities);
+        }
         if (Array.isArray(data.discounts)) setDiscounts(data.discounts as DiscountCode[]);
         if (Array.isArray(data.marketingBanners)) setMarketingBanners(data.marketingBanners as MarketingBanner[]);
         if (data.storeSettings) setStoreSettings(data.storeSettings as StoreSettings);

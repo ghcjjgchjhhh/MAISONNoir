@@ -911,7 +911,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           : item));
       }
     }
-    setIsCheckoutOpen(false);
     setIsCartOpen(false);
     showToast(`Order #${newOrder.id} placed successfully!`, 'success');
     return newOrder;

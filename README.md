@@ -2,19 +2,29 @@
 <img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
 </div>
 
-# Run and deploy your AI Studio app
+# Maison Noir
 
-This contains everything you need to run your app locally.
+Luxury fashion storefront, customer account portal, Firebase-backed admin dashboard, and installable mobile PWA.
 
-View your app in AI Studio: https://ai.studio/apps/545fad02-3fb2-4a84-9cd9-20551cd38840
+For the complete setup and deployment handoff, read [AI_HANDOFF.md](AI_HANDOFF.md).
 
-## Run Locally
+## Quick Start
 
-**Prerequisites:**  Node.js
+Prerequisite: Node.js
 
+```powershell
+npm install
+npm run dev
+```
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+Validate a production build:
+
+```powershell
+npm run lint
+npm run build
+```
+
+Live sites:
+
+- Firebase: https://maison-noir-a6dbb.web.app
+- Vercel: https://maison-noir-eight-sepia.vercel.app

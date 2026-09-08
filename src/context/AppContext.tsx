@@ -1193,7 +1193,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setFirebaseUserReady(true);
       if (!firebaseUser) {
         setFirebaseUserReady(false);
-        void signInAnonymously(auth).catch(error => {
+        void signInAnonymously(auth!).catch(error => {
           console.error('Anonymous Firebase sign-in failed:', error);
         });
         return;
@@ -1439,7 +1439,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         markNotificationAsRead,
         markAllNotificationsAsRead,
         clearNotification,
-        addNotification,
+        addNotification: (notif) => addNotification({ type: notif.type || 'system', ...notif }),
         storeSettings,
         updateStoreSettings,
         resetToDefaults,

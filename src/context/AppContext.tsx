@@ -17,6 +17,7 @@ import {
   StoreSettings
   ,CustomerAddress,
   CustomerReview
+  ,CustomerActivity
 } from '../types';
 import { 
   INITIAL_PRODUCTS,
@@ -42,6 +43,7 @@ export type AdminTab =
   | 'add_discount'
   | 'marketing' 
   | 'notifications' 
+  | 'activity'
   | 'settings';
 
 interface AppContextType {
@@ -68,6 +70,8 @@ interface AppContextType {
   reviews: CustomerReview[];
   saveReview: (review: Omit<CustomerReview, 'id' | 'createdAt'>, id?: string) => void;
   deleteReview: (id: string) => void;
+  activities: CustomerActivity[];
+  recordActivity: (action: string, description: string, metadata?: CustomerActivity['metadata']) => void;
 
   // Products & Inventory
   products: Product[];
@@ -248,6 +252,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
   const [accountOpen, setAccountOpen] = useState(false);
 
+  const [activities, setActivities] = useState<CustomerActivity[]>(() => {
+    try { return JSON.parse(localStorage.getItem('mn_activities') || '[]'); } catch { return []; }
+  });
+  useEffect(() => { localStorage.setItem('mn_activities', JSON.stringify(activities)); }, [activities]);
+  const recordActivityFor = (actor: Pick<User, 'id' | 'name' | 'email'>, action: string, description: string, metadata?: CustomerActivity['metadata']) => {
+    const activity: CustomerActivity = {
+      id: `activity-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      userId: actor.id,
+      userName: actor.name,
+      userEmail: actor.email,
+      action,
+      description,
+      createdAt: new Date().toISOString(),
+      metadata
+    };
+    setActivities(prev => [activity, ...prev].slice(0, 500));
+  };
+  const recordActivity = (action: string, description: string, metadata?: CustomerActivity['metadata']) => {
+    if (user) recordActivityFor(user, action, description, metadata);
+  };
+
   const [wishlist, setWishlist] = useState<Product[]>(() => {
     try { return JSON.parse(localStorage.getItem(`mn_wishlist_${user?.id || 'guest'}`) || '[]'); } catch { return []; }
   });
@@ -277,24 +302,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [user?.id]);
 
   const toggleWishlist = (product: Product) => {
+    const saved = wishlist.some(item => item.id === product.id);
     setWishlist(prev => prev.some(item => item.id === product.id)
       ? prev.filter(item => item.id !== product.id)
       : [product, ...prev]);
+    recordActivity(saved ? 'wishlist_removed' : 'wishlist_added', `${saved ? 'Removed' : 'Saved'} ${product.name} ${saved ? 'from' : 'to'} wishlist.`, { productId: product.id, productName: product.name });
   };
   const addRecentlyViewed = (product: Product) => {
     setRecentlyViewed(prev => [product, ...prev.filter(item => item.id !== product.id)].slice(0, 12));
+    recordActivity('product_viewed', `Viewed ${product.name}.`, { productId: product.id, productName: product.name });
   };
-  const removeRecentlyViewed = (productId: number) => setRecentlyViewed(prev => prev.filter(item => item.id !== productId));
+  const removeRecentlyViewed = (productId: number) => {
+    setRecentlyViewed(prev => prev.filter(item => item.id !== productId));
+    recordActivity('recently_viewed_removed', `Removed product ${productId} from recently viewed.`);
+  };
   const saveAddress = (address: Omit<CustomerAddress, 'id'>, id?: string) => {
     setAddresses(prev => {
       const next = id ? prev.map(item => item.id === id ? { ...address, id } : item) : [...prev, { ...address, id: `address-${Date.now()}` }];
       return next.map((item, index) => ({ ...item, isDefault: address.isDefault ? item.id === (id || next[next.length - 1].id) : item.isDefault || index === 0 }));
     });
+    recordActivity(id ? 'address_updated' : 'address_added', `${id ? 'Updated' : 'Added'} a delivery address.`);
   };
-  const deleteAddress = (id: string) => setAddresses(prev => prev.filter(item => item.id !== id));
-  const setDefaultAddress = (id: string) => setAddresses(prev => prev.map(item => ({ ...item, isDefault: item.id === id })));
-  const saveReview = (review: Omit<CustomerReview, 'id' | 'createdAt'>, id?: string) => setReviews(prev => id ? prev.map(item => item.id === id ? { ...review, id, createdAt: item.createdAt } : item) : [...prev, { ...review, id: `review-${Date.now()}`, createdAt: new Date().toISOString() }]);
-  const deleteReview = (id: string) => setReviews(prev => prev.filter(item => item.id !== id));
+  const deleteAddress = (id: string) => { setAddresses(prev => prev.filter(item => item.id !== id)); recordActivity('address_deleted', 'Deleted a delivery address.'); };
+  const setDefaultAddress = (id: string) => { setAddresses(prev => prev.map(item => ({ ...item, isDefault: item.id === id }))); recordActivity('default_address_changed', 'Changed the default delivery address.'); };
+  const saveReview = (review: Omit<CustomerReview, 'id' | 'createdAt'>, id?: string) => { setReviews(prev => id ? prev.map(item => item.id === id ? { ...review, id, createdAt: item.createdAt } : item) : [...prev, { ...review, id: `review-${Date.now()}`, createdAt: new Date().toISOString() }]); recordActivity(id ? 'review_updated' : 'review_created', `${id ? 'Updated' : 'Posted'} a product review.`, { productId: review.productId, rating: review.rating }); };
+  const deleteReview = (id: string) => { setReviews(prev => prev.filter(item => item.id !== id)); recordActivity('review_deleted', 'Deleted a product review.'); };
 
   const loginWithGoogle = async (customEmail?: string, customName?: string): Promise<User> => {
     if (!auth) {
@@ -317,11 +349,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setUser(newUser);
     localStorage.setItem('mn_user', JSON.stringify(newUser));
     recordCustomerLogin(newUser);
+    recordActivityFor(newUser, 'signed_in', 'Signed in with Google.');
     setIsAuthModalOpen(false);
     showToast(`Signed in with Google as ${newUser.name}`);
     return newUser;
   };
-
   const loginWithEmail = async (email: string, name: string): Promise<User> => {
     const isUserAdmin = email.toLowerCase().includes('ifeanyianoma2') || name.toLowerCase().includes('ifeanyianoma2') || email.toLowerCase().includes('admin');
     const newUser: User = {
@@ -334,13 +366,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setUser(newUser);
     localStorage.setItem('mn_user', JSON.stringify(newUser));
     recordCustomerLogin(newUser);
+    recordActivityFor(newUser, 'signed_in', 'Signed in with email.');
     setIsAuthModalOpen(false);
     showToast(`Signed in as ${newUser.name}`);
     return newUser;
   };
 
   const logout = () => {
-    setUser(null);
+    if (user) recordActivity('signed_out', 'Signed out of the account.');
+      setUser(null);
     localStorage.removeItem('mn_user');
     setCurrentView('store');
     showToast('Signed out successfully.');
@@ -690,6 +724,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     });
     showToast(`Added ${product.name} (${chosenSize}) to your bag`);
+    recordActivity('cart_item_added', `Added ${qty} ${product.name} to the cart.`, { productId: product.id, quantity: qty, size: chosenSize });
   };
 
   const removeFromCart = (productId: number, size: string) => {
@@ -880,6 +915,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     newOrder.total = Math.max(0, newOrder.subtotal + newOrder.shipping - discountAmount);
     pendingOrderIds.current.add(newOrder.id);
     setOrders(prev => [newOrder, ...prev]);
+    recordActivity('order_placed', `Placed order ${newOrder.id}.`, { orderId: newOrder.id, total: newOrder.total, paymentMethod });
     if (user) {
       recordCustomerLogin(user);
       setCustomers(prev => prev.map(customer => customer.id === user.id
@@ -1211,6 +1247,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
         if (Array.isArray(data.inventoryLogs)) setInventoryLogs(data.inventoryLogs as InventoryLog[]);
         if (Array.isArray(data.notifications)) setNotifications(data.notifications as AdminNotification[]);
+        if (Array.isArray(data.activities)) setActivities(data.activities as CustomerActivity[]);
         if (Array.isArray(data.discounts)) setDiscounts(data.discounts as DiscountCode[]);
         if (Array.isArray(data.marketingBanners)) setMarketingBanners(data.marketingBanners as MarketingBanner[]);
         if (data.storeSettings) setStoreSettings(data.storeSettings as StoreSettings);
@@ -1234,6 +1271,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       customers,
       inventoryLogs,
       notifications,
+      activities,
       discounts,
       marketingBanners,
       storeSettings,
@@ -1241,7 +1279,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }, { merge: true }).catch(error => {
       console.error('Firestore store write failed:', error);
     });
-  }, [cloudReady, firebaseUserReady, products, orders, customers, inventoryLogs, notifications, discounts, marketingBanners, storeSettings]);
+  }, [cloudReady, firebaseUserReady, products, orders, customers, inventoryLogs, notifications, activities, discounts, marketingBanners, storeSettings]);
 
   const addMarketingBanner = (banner: Omit<MarketingBanner, 'id'>) => {
     const newBanner: MarketingBanner = {
@@ -1298,11 +1336,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.removeItem('mn_discounts');
     localStorage.removeItem('mn_marketing');
     localStorage.removeItem('mn_store_settings');
+    localStorage.removeItem('mn_activities');
     setProducts([]);
     setOrders([]);
     setCustomers([]);
     setInventoryLogs([]);
     setNotifications([]);
+    setActivities([]);
     setDiscounts([]);
     setMarketingBanners([]);
     setStoreSettings(INITIAL_STORE_SETTINGS);
@@ -1341,6 +1381,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         reviews,
         saveReview,
         deleteReview,
+        activities,
+        recordActivity,
         products,
         addProduct,
         updateProduct,

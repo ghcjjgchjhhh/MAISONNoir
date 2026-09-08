@@ -14,6 +14,7 @@ import { AdminMarketing } from './AdminMarketing';
 import { AdminAnalytics } from './AdminAnalytics';
 import { AdminSettings } from './AdminSettings';
 import { AdminRestockModal } from './AdminRestockModal';
+import { AdminActivity } from './AdminActivity';
 
 export const AdminDashboard: React.FC = () => {
   const { currentAdminTab, adminActiveTab } = useApp();
@@ -50,6 +51,8 @@ export const AdminDashboard: React.FC = () => {
         return <AdminAnalytics />;
       case 'settings':
         return <AdminSettings />;
+      case 'activity':
+        return <AdminActivity />;
       default:
         return <AdminOverview />;
     }

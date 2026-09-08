@@ -19,7 +19,8 @@ import {
   FileText, 
   ExternalLink, 
   X, 
-  Sparkle
+  Sparkle,
+  Activity
 } from 'lucide-react';
 
 interface AdminSidebarProps {
@@ -35,6 +36,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ mobileOpen = false, 
     products, 
     orders, 
     notifications,
+    activities,
     storeSettings,
     setCurrentView,
     openPolicyModal
@@ -69,6 +71,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ mobileOpen = false, 
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
     { id: 'marketing', label: 'Marketing', icon: Sparkles },
     { id: 'notifications', label: 'Notifications', icon: Bell, badge: unreadNotifCount > 0 ? unreadNotifCount : undefined, badgeColor: 'bg-rose-500 text-white' },
+    { id: 'activity', label: 'Customer Activity', icon: Activity, badge: activities.length > 0 ? activities.length : undefined },
     { id: 'settings', label: 'Settings', icon: Settings }
   ];
 

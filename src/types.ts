@@ -172,6 +172,17 @@ export interface CustomerUser {
   }[];
 }
 
+export interface CustomerActivity {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  action: string;
+  description: string;
+  createdAt: string;
+  metadata?: Record<string, string | number | boolean>;
+}
+
 export interface CustomerAddress {
   id: string;
   fullName: string;

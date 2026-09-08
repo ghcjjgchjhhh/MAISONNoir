@@ -24,8 +24,8 @@ export const SplashScreen: React.FC<{ onComplete: () => void }> = ({ onComplete 
         <div className="splash-monogram" aria-hidden="true"><span>M</span><span>N</span></div>
         <h1>MAISON NOIR</h1>
         <p className="splash-motto">FASHION LIVES LONGER</p>
-        <div className="splash-loader" style={{ '--progress': `${progress * 3.6}deg` } as React.CSSProperties}>
-          <div className="splash-loader-inner" />
+        <div className="splash-loader" aria-hidden="true">
+          <div className="splash-loader-progress" style={{ width: `${progress}%` }} />
         </div>
         <p className="splash-loading">LOADING...</p>
       </div>

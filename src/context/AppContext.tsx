@@ -25,7 +25,7 @@ import {
 } from '../data/mockData';
 import { auth, db, googleProvider } from '../firebase';
 import { onAuthStateChanged, signInAnonymously, signInWithPopup } from 'firebase/auth';
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { collection, doc, onSnapshot, setDoc } from 'firebase/firestore';
 
 export type AdminTab = 
   | 'dashboard' 
@@ -191,6 +191,7 @@ export function checkIsAdmin(user: User | null): boolean {
 
 const isDemoCustomer = (customer: CustomerUser) => customer.id === 'cust-1' || customer.id === 'cust-2';
 const STORE_DATA_VERSION = 2;
+const customerDocumentId = (customer: Pick<CustomerUser, 'id' | 'email'>) => customer.id || encodeURIComponent(customer.email.toLowerCase());
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Theme State
@@ -357,7 +358,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const loginWithEmail = async (email: string, name: string): Promise<User> => {
     const isUserAdmin = email.toLowerCase().includes('ifeanyianoma2') || name.toLowerCase().includes('ifeanyianoma2') || email.toLowerCase().includes('admin');
     const newUser: User = {
-      id: 'usr_' + Math.random().toString(36).substring(2, 9),
+      id: `email-${encodeURIComponent(email.trim().toLowerCase())}`,
       name: name || email.split('@')[0],
       email: email,
       role: isUserAdmin ? 'admin' : 'customer',
@@ -1273,7 +1274,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     const storeRef = doc(db, 'stores', 'maison-noir');
-    return onSnapshot(storeRef, snapshot => {
+    const customerCollectionRef = collection(db, 'stores', 'maison-noir', 'customers');
+    const unsubscribeStore = onSnapshot(storeRef, snapshot => {
       if (snapshot.exists()) {
         const data = snapshot.data();
         if (Array.isArray(data.products)) {
@@ -1296,7 +1298,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           });
         }
         if (Array.isArray(data.customers)) {
-          setCustomers((data.customers as CustomerUser[]).filter(customer => !isDemoCustomer(customer)));
+          setCustomers(currentCustomers => {
+            const mergedCustomers = [...currentCustomers];
+            (data.customers as CustomerUser[]).filter(customer => !isDemoCustomer(customer)).forEach(cloudCustomer => {
+              const existingIndex = mergedCustomers.findIndex(customer =>
+                customer.id === cloudCustomer.id || customer.email.toLowerCase() === cloudCustomer.email.toLowerCase()
+              );
+              if (existingIndex === -1) mergedCustomers.push(cloudCustomer);
+              else mergedCustomers[existingIndex] = { ...mergedCustomers[existingIndex], ...cloudCustomer };
+            });
+            return mergedCustomers;
+          });
         }
         if (Array.isArray(data.inventoryLogs)) setInventoryLogs(data.inventoryLogs as InventoryLog[]);
         if (Array.isArray(data.notifications)) setNotifications(data.notifications as AdminNotification[]);
@@ -1314,6 +1326,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setCloudReady(true);
       showToast('Cloud data is unavailable. Changes are currently local only.', 'error');
     });
+    const unsubscribeCustomers = onSnapshot(customerCollectionRef, snapshot => {
+      const cloudCustomers = snapshot.docs.map(customerSnapshot => customerSnapshot.data() as CustomerUser);
+      if (cloudCustomers.length === 0) return;
+      setCustomers(currentCustomers => {
+        const mergedCustomers = [...currentCustomers];
+        cloudCustomers.filter(customer => !isDemoCustomer(customer)).forEach(cloudCustomer => {
+          const existingIndex = mergedCustomers.findIndex(customer =>
+            customer.id === cloudCustomer.id || customer.email.toLowerCase() === cloudCustomer.email.toLowerCase()
+          );
+          if (existingIndex === -1) mergedCustomers.push(cloudCustomer);
+          else mergedCustomers[existingIndex] = { ...mergedCustomers[existingIndex], ...cloudCustomer };
+        });
+        return mergedCustomers;
+      });
+    }, error => console.error('Firestore customer sync failed:', error));
+
+    return () => {
+      unsubscribeStore();
+      unsubscribeCustomers();
+    };
   }, []);
 
   useEffect(() => {
@@ -1334,6 +1366,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updatedAt: new Date().toISOString()
     }, { merge: true }).catch(error => {
       console.error('Firestore store write failed:', error);
+    });
+
+    const customerCollectionRef = collection(db, 'stores', 'maison-noir', 'customers');
+    customers.forEach(customer => {
+      void setDoc(doc(customerCollectionRef, customerDocumentId(customer)), customer, { merge: true }).catch(error => {
+        console.error('Firestore customer write failed:', error);
+      });
     });
   }, [cloudReady, firebaseUserReady, products, orders, customers, inventoryLogs, notifications, activities, discounts, marketingBanners, storeSettings]);
 

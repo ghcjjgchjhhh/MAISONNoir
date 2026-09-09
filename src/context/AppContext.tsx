@@ -908,7 +908,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ? 'Pending (Pay on Delivery)' 
         : paymentMethod === 'card' 
         ? 'Paid (Card)' 
-        : 'Awaiting Bank Confirmation'
+        : 'Awaiting Bank Confirmation',
+      timeline: [{
+        status: 'Pending',
+        timestamp: new Date().toISOString(),
+        note: 'Customer placed order via checkout'
+      }]
     };
 
     newOrder.discount = discountAmount || undefined;
@@ -1063,6 +1068,51 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     localStorage.setItem('mn_customers', JSON.stringify(customers));
   }, [customers]);
+
+  useEffect(() => {
+    if (orders.length === 0) return;
+
+    setCustomers(previousCustomers => {
+      const nextCustomers = [...previousCustomers];
+      let changed = false;
+
+      orders.forEach(order => {
+        const existingIndex = nextCustomers.findIndex(customer =>
+          customer.id === order.customerId || customer.email.toLowerCase() === order.customer.email.toLowerCase()
+        );
+
+        if (existingIndex === -1) {
+          nextCustomers.push({
+            id: order.customerId || `customer-${order.customer.email.toLowerCase()}`,
+            name: order.customer.fullName,
+            email: order.customer.email,
+            provider: 'email',
+            status: 'offline',
+            ordersCount: 0,
+            totalSpent: 0,
+            createdAt: order.createdAt,
+            lastActive: order.createdAt,
+            sessions: []
+          });
+          changed = true;
+        }
+
+        const customer = nextCustomers[existingIndex === -1 ? nextCustomers.length - 1 : existingIndex];
+        const customerOrders = orders.filter(item =>
+          item.customerId === customer.id || item.customer.email.toLowerCase() === customer.email.toLowerCase()
+        );
+        const ordersCount = customerOrders.length;
+        const totalSpent = customerOrders.reduce((sum, item) => sum + item.total, 0);
+        if (customer.ordersCount !== ordersCount || customer.totalSpent !== totalSpent) {
+          const customerIndex = nextCustomers.indexOf(customer);
+          nextCustomers[customerIndex] = { ...customer, ordersCount, totalSpent };
+          changed = true;
+        }
+      });
+
+      return changed ? nextCustomers.filter(customer => !isDemoCustomer(customer)) : previousCustomers;
+    });
+  }, [orders]);
 
   function recordCustomerLogin(signedInUser: User) {
     const now = new Date().toISOString();

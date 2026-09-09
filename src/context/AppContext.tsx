@@ -1130,30 +1130,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setCustomers(prev => {
       const existing = prev.find(customer => customer.id === signedInUser.id || customer.email === signedInUser.email);
-      if (!existing) {
-        return [{
-          id: signedInUser.id,
-          name: signedInUser.name,
-          email: signedInUser.email,
-          avatar: signedInUser.avatar,
-          provider: signedInUser.provider,
-          status: 'active',
-          ordersCount: 0,
-          totalSpent: 0,
-          createdAt: now,
-          lastActive: now,
-          sessions: [session]
-        }, ...prev];
+      const customer = existing
+        ? {
+            ...existing,
+            id: signedInUser.id,
+            name: signedInUser.name,
+            email: signedInUser.email,
+            avatar: signedInUser.avatar,
+            provider: signedInUser.provider,
+            status: 'active' as const,
+            lastActive: now,
+            sessions: existing.sessions.some(item => item.id === session.id)
+              ? existing.sessions.map(item => item.id === session.id ? session : item)
+              : [session, ...existing.sessions]
+          }
+        : {
+            id: signedInUser.id,
+            name: signedInUser.name,
+            email: signedInUser.email,
+            avatar: signedInUser.avatar,
+            provider: signedInUser.provider,
+            status: 'active' as const,
+            ordersCount: 0,
+            totalSpent: 0,
+            createdAt: now,
+            lastActive: now,
+            sessions: [session]
+          };
+
+      if (db && auth?.currentUser) {
+        void setDoc(doc(db, 'stores', 'maison-noir', 'customers', customerDocumentId(customer)), customer, { merge: true })
+          .catch(error => console.error('Firestore sign-in customer write failed:', error));
       }
 
-      const sessions = existing.sessions.some(item => item.id === session.id)
-        ? existing.sessions.map(item => item.id === session.id ? session : item)
-        : [session, ...existing.sessions];
-
-      return prev.map(customer => customer.id === existing.id
-        ? { ...customer, id: signedInUser.id, name: signedInUser.name, email: signedInUser.email, avatar: signedInUser.avatar, provider: signedInUser.provider, status: 'active', lastActive: now, sessions }
-        : customer
-      );
+      if (!existing) {
+        return [customer, ...prev];
+      }
+      return prev.map(item => item.id === existing.id ? customer : item);
     });
   }
 
@@ -1305,7 +1318,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 customer.id === cloudCustomer.id || customer.email.toLowerCase() === cloudCustomer.email.toLowerCase()
               );
               if (existingIndex === -1) mergedCustomers.push(cloudCustomer);
-              else mergedCustomers[existingIndex] = { ...mergedCustomers[existingIndex], ...cloudCustomer };
             });
             return mergedCustomers;
           });
@@ -1336,7 +1348,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             customer.id === cloudCustomer.id || customer.email.toLowerCase() === cloudCustomer.email.toLowerCase()
           );
           if (existingIndex === -1) mergedCustomers.push(cloudCustomer);
-          else mergedCustomers[existingIndex] = { ...mergedCustomers[existingIndex], ...cloudCustomer };
         });
         return mergedCustomers;
       });

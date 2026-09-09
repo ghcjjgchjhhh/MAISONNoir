@@ -31,6 +31,7 @@ export const AdminOverview: React.FC = () => {
     openRestockModal,
     updateOrderStatus
   } = useApp();
+  const currency = storeSettings.currencySymbol || '$';
 
   const [salesTimeframe, setSalesTimeframe] = useState<'today' | '7d' | '30d' | '3m' | '6m' | '1y' | 'custom'>('7d');
 
@@ -39,6 +40,17 @@ export const AdminOverview: React.FC = () => {
   const totalOrdersCount = orders.length;
   const totalCustomersCount = customers.length;
   const totalProductsSold = orders.reduce((sum, o) => sum + o.items.reduce((s, i) => s + i.qty, 0), 0);
+  const topProducts = products
+    .map(product => ({
+      product,
+      unitsSold: orders
+        .filter(order => order.status !== 'Cancelled')
+        .flatMap(order => order.items)
+        .filter(item => item.id === product.id)
+        .reduce((sum, item) => sum + item.qty, 0)
+    }))
+    .sort((first, second) => second.unitsSold - first.unitsSold)
+    .slice(0, 4);
 
   // Status breakdown
   const pendingOrders = orders.filter(o => o.status === 'Pending').length;
@@ -46,7 +58,8 @@ export const AdminOverview: React.FC = () => {
   const shippedOrders = orders.filter(o => o.status === 'Shipped').length;
   const deliveredOrders = orders.filter(o => o.status === 'Delivered').length;
   const cancelledOrders = orders.filter(o => o.status === 'Cancelled').length;
-  const totalStatusSum = pendingOrders + processingOrders + shippedOrders + deliveredOrders + cancelledOrders;
+  const totalStatusSum = orders.length;
+  const statusPercent = (count: number) => totalStatusSum > 0 ? Math.round((count / totalStatusSum) * 100) : 0;
 
   // Stock status checks
   const threshold = storeSettings.lowStockThreshold || 5;
@@ -171,7 +184,7 @@ export const AdminOverview: React.FC = () => {
           </div>
           <div className="mt-3">
             <div className="text-2xl font-black text-neutral-900 dark:text-neutral-50 tracking-tight">
-              ${totalSalesRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {currency}{totalSalesRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <div className="flex items-center gap-1.5 mt-1 text-xs">
               <span className="flex items-center text-emerald-600 dark:text-emerald-400 font-bold">
@@ -428,7 +441,7 @@ export const AdminOverview: React.FC = () => {
                 <circle 
                   cx="50" cy="50" r="38" 
                   stroke="#6366f1" strokeWidth="14" fill="none" 
-                  strokeDasharray={`${(shippedOrders / totalStatusSum) * 238.7} 238.7`} 
+                  strokeDasharray={`${totalStatusSum ? (shippedOrders / totalStatusSum) * 238.7 : 0} 238.7`}
                   strokeDashoffset="0" 
                 />
                 
@@ -436,24 +449,24 @@ export const AdminOverview: React.FC = () => {
                 <circle 
                   cx="50" cy="50" r="38" 
                   stroke="#10b981" strokeWidth="14" fill="none" 
-                  strokeDasharray={`${(processingOrders / totalStatusSum) * 238.7} 238.7`} 
-                  strokeDashoffset={`-${(shippedOrders / totalStatusSum) * 238.7}`} 
+                  strokeDasharray={`${totalStatusSum ? (processingOrders / totalStatusSum) * 238.7 : 0} 238.7`}
+                  strokeDashoffset={`-${totalStatusSum ? (shippedOrders / totalStatusSum) * 238.7 : 0}`}
                 />
 
                 {/* Pending (14%) - Amber */}
                 <circle 
                   cx="50" cy="50" r="38" 
                   stroke="#f59e0b" strokeWidth="14" fill="none" 
-                  strokeDasharray={`${(pendingOrders / totalStatusSum) * 238.7} 238.7`} 
-                  strokeDashoffset={`-${((shippedOrders + processingOrders) / totalStatusSum) * 238.7}`} 
+                  strokeDasharray={`${totalStatusSum ? (pendingOrders / totalStatusSum) * 238.7 : 0} 238.7`}
+                  strokeDashoffset={`-${totalStatusSum ? ((shippedOrders + processingOrders) / totalStatusSum) * 238.7 : 0}`}
                 />
 
                 {/* Delivered (16%) - Blue */}
                 <circle 
                   cx="50" cy="50" r="38" 
                   stroke="#3b82f6" strokeWidth="14" fill="none" 
-                  strokeDasharray={`${(deliveredOrders / totalStatusSum) * 238.7} 238.7`} 
-                  strokeDashoffset={`-${((shippedOrders + processingOrders + pendingOrders) / totalStatusSum) * 238.7}`} 
+                  strokeDasharray={`${totalStatusSum ? (deliveredOrders / totalStatusSum) * 238.7 : 0} 238.7`}
+                  strokeDashoffset={`-${totalStatusSum ? ((shippedOrders + processingOrders + pendingOrders) / totalStatusSum) * 238.7 : 0}`}
                 />
               </svg>
 
@@ -471,7 +484,7 @@ export const AdminOverview: React.FC = () => {
                 <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
                 <span>Pending</span>
               </span>
-              <span className="font-bold text-neutral-900 dark:text-neutral-100">{pendingOrders} (14%)</span>
+              <span className="font-bold text-neutral-900 dark:text-neutral-100">{pendingOrders} ({statusPercent(pendingOrders)}%)</span>
             </div>
 
             <div className="flex items-center justify-between">
@@ -479,7 +492,7 @@ export const AdminOverview: React.FC = () => {
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
                 <span>Processing</span>
               </span>
-              <span className="font-bold text-neutral-900 dark:text-neutral-100">{processingOrders} (25%)</span>
+              <span className="font-bold text-neutral-900 dark:text-neutral-100">{processingOrders} ({statusPercent(processingOrders)}%)</span>
             </div>
 
             <div className="flex items-center justify-between">
@@ -487,7 +500,7 @@ export const AdminOverview: React.FC = () => {
                 <span className="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
                 <span>Shipped</span>
               </span>
-              <span className="font-bold text-neutral-900 dark:text-neutral-100">{shippedOrders} (44%)</span>
+              <span className="font-bold text-neutral-900 dark:text-neutral-100">{shippedOrders} ({statusPercent(shippedOrders)}%)</span>
             </div>
 
             <div className="flex items-center justify-between">
@@ -495,7 +508,7 @@ export const AdminOverview: React.FC = () => {
                 <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
                 <span>Delivered</span>
               </span>
-              <span className="font-bold text-neutral-900 dark:text-neutral-100">{deliveredOrders} (16%)</span>
+              <span className="font-bold text-neutral-900 dark:text-neutral-100">{deliveredOrders} ({statusPercent(deliveredOrders)}%)</span>
             </div>
           </div>
         </div>
@@ -555,7 +568,7 @@ export const AdminOverview: React.FC = () => {
                         </div>
                       </td>
                       <td className="py-3 font-bold text-neutral-900 dark:text-neutral-100">
-                        ${order.total.toFixed(2)}
+                        {currency}{order.total.toFixed(2)}
                       </td>
                       <td className="py-3">
                         <span className={`
@@ -602,7 +615,7 @@ export const AdminOverview: React.FC = () => {
           </div>
 
           <div className="space-y-3.5">
-            {products.slice(0, 4).map((p, i) => (
+            {topProducts.map(({ product: p, unitsSold }, i) => (
               <div key={p.id} className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="relative shrink-0">
@@ -617,7 +630,7 @@ export const AdminOverview: React.FC = () => {
                   </div>
                   <div className="min-w-0">
                     <h4 className="text-xs font-bold text-neutral-900 dark:text-neutral-100 truncate">{p.name}</h4>
-                    <p className="text-[10px] text-neutral-400">{p.cat.toUpperCase()} · ${p.price}</p>
+                    <p className="text-[10px] text-neutral-400">{p.cat.toUpperCase()} · {unitsSold} sold</p>
                   </div>
                 </div>
 

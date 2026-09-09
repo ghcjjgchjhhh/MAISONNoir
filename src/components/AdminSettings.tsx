@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import {
   Settings,
@@ -34,6 +34,24 @@ export const AdminSettings: React.FC = () => {
   const [formFacebook, setFormFacebook] = useState(storeSettings.socials.facebook);
 
   const [savedSuccess, setSavedSuccess] = useState(false);
+
+  useEffect(() => {
+    setFormStoreName(storeSettings.storeName);
+    setFormTagline(storeSettings.tagline);
+    setFormDescription(storeSettings.storeDescription);
+    setFormCurrency(storeSettings.currency);
+    setFormCurrencySymbol(storeSettings.currencySymbol);
+    setFormThreshold(storeSettings.lowStockThreshold);
+    setFormShippingFee(storeSettings.defaultShippingFee);
+    setFormFreeShippingMin(storeSettings.freeShippingThreshold);
+    setFormTaxRate(storeSettings.taxRate);
+    setFormEmail(storeSettings.email);
+    setFormPhone(storeSettings.phone);
+    setFormLocations(storeSettings.supportedLocations.join(', '));
+    setFormInstagram(storeSettings.socials.instagram);
+    setFormTwitter(storeSettings.socials.twitter);
+    setFormFacebook(storeSettings.socials.facebook);
+  }, [storeSettings]);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();

@@ -144,6 +144,7 @@ interface AppContextType {
 
   // Marketing & Subscribers
   subscribers: { email: string; date: string }[];
+  addSubscriber: (email: string) => void;
   marketingCampaigns: any[];
 
   // Store Settings
@@ -272,6 +273,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
   const recordActivity = (action: string, description: string, metadata?: CustomerActivity['metadata']) => {
     if (user) recordActivityFor(user, action, description, metadata);
+  };
+  const recordAdminActivity = (action: string, description: string, metadata?: CustomerActivity['metadata']) => {
+    if (user && isAdmin) recordActivityFor(user, action, description, metadata);
   };
 
   const [wishlist, setWishlist] = useState<Product[]>(() => {
@@ -407,6 +411,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateStoreSettings = (newSettings: Partial<StoreSettings>) => {
     setStoreSettings(prev => ({ ...prev, ...newSettings }));
+    recordAdminActivity('store_settings_updated', 'Updated store configuration.', { fields: Object.keys(newSettings).join(', ') });
     showToast('Store settings updated successfully.');
   };
 
@@ -484,6 +489,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       read: false
     };
     setNotifications(prev => [newNotif, ...prev]);
+    recordAdminActivity('notification_created', `Created notification: ${newNotif.title}.`, { notificationId: newNotif.id, type: newNotif.type });
   };
 
   // Product CRUD
@@ -504,6 +510,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setProducts(prev => [newProduct, ...prev]);
+    recordAdminActivity('product_created', `Added product ${newProduct.name}.`, { productId: newProduct.id, productName: newProduct.name });
     logInventoryChange({
       productId: newProduct.id,
       productName: newProduct.name,
@@ -525,11 +532,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const normalized = { ...updated, stock: totalStock };
     setProducts(prev => prev.map(p => p.id === updated.id ? normalized : p));
+    recordAdminActivity('product_updated', `Updated product ${updated.name}.`, { productId: updated.id, productName: updated.name });
     showToast(`Updated "${updated.name}" successfully.`);
   };
 
   const deleteProduct = (productId: number) => {
+    const product = products.find(item => item.id === productId);
     setProducts(prev => prev.filter(p => p.id !== productId));
+    if (product) recordAdminActivity('product_deleted', `Removed product ${product.name}.`, { productId, productName: product.name });
     showToast('Product removed from catalog.');
   };
 
@@ -550,6 +560,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }))
     };
     setProducts(prev => [duplicated, ...prev]);
+    recordAdminActivity('product_duplicated', `Duplicated product ${existing.name}.`, { productId: newId, sourceProductId: productId });
     showToast(`Duplicated "${existing.name}" as draft.`);
   };
 
@@ -558,6 +569,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (p.id !== productId) return p;
       const nextStatus = p.status === 'published' ? 'draft' : 'published';
       showToast(`"${p.name}" is now ${nextStatus}.`);
+      recordAdminActivity('product_visibility_changed', `Changed ${p.name} visibility to ${nextStatus}.`, { productId, status: nextStatus });
       return { ...p, status: nextStatus };
     }));
   };
@@ -567,6 +579,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (p.id !== productId) return p;
       const nextVal = !p.isFeatured;
       showToast(`"${p.name}" ${nextVal ? 'marked as Featured' : 'removed from Featured'}.`);
+      recordAdminActivity('product_featured_changed', `${nextVal ? 'Featured' : 'Unfeatured'} ${p.name}.`, { productId, featured: nextVal });
       return { ...p, isFeatured: nextVal };
     }));
   };
@@ -622,6 +635,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
 
       showToast(`✓ ${qtyToAdd} units successfully added to ${p.name} — ${targetVariantName}.`, 'success');
+      recordAdminActivity('inventory_restocked', `Added ${qtyToAdd} units to ${p.name}.`, { productId: p.id, quantity: qtyToAdd, variant: targetVariantName });
       return { ...p, variants: updatedVariants, stock: totalNewStock };
     }));
 
@@ -665,6 +679,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
 
       showToast(`Adjusted ${p.name} stock to ${newStockVal} units.`);
+      recordAdminActivity('inventory_adjusted', `Adjusted ${p.name} stock to ${newStockVal} units.`, { productId: p.id, stock: newStockVal, reason });
       return { ...p, variants: updatedVariants, stock: totalNewStock };
     }));
   };
@@ -960,6 +975,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateOrderStatus = (orderId: string, status: OrderStatus) => {
     let orderToRestock: Order | null = null;
+    const orderBeforeUpdate = orders.find(order => order.id === orderId);
 
     setOrders(prev =>
       prev.map(o => {
@@ -1048,10 +1064,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } else {
       showToast(`Order #${orderId} marked as ${status}.`);
     }
+    recordAdminActivity('order_status_updated', `Changed order ${orderId} to ${status}.`, { orderId, previousStatus: orderBeforeUpdate?.status || 'unknown', status });
   };
 
   const deleteOrder = (orderId: string) => {
+    const order = orders.find(item => item.id === orderId);
     setOrders(prev => prev.filter(o => o.id !== orderId));
+    recordAdminActivity('order_deleted', `Deleted order ${orderId}.`, { orderId, customerEmail: order?.customer.email || '' });
     showToast(`Order #${orderId} deleted.`);
   };
 
@@ -1181,6 +1200,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         sessions: updatedSessions
       };
     }));
+    recordAdminActivity('customer_session_revoked', `Revoked a customer session.`, { customerId, sessionId });
     showToast('✓ Customer session has been revoked.');
   };
 
@@ -1193,11 +1213,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         sessions: c.sessions.map(s => ({ ...s, status: 'revoked' as const }))
       };
     }));
+    recordAdminActivity('customer_sessions_revoked', `Revoked all sessions for a customer.`, { customerId });
     showToast('✓ All active customer sessions signed out.');
   };
 
   const updateCustomerStatus = (customerId: string, status: CustomerUser['status']) => {
     setCustomers(prev => prev.map(c => c.id === customerId ? { ...c, status } : c));
+    recordAdminActivity('customer_status_updated', `Changed customer status to ${status}.`, { customerId, status });
     showToast(`Customer status updated to ${status}.`);
   };
 
@@ -1222,15 +1244,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       usedCount: 0
     };
     setDiscounts(prev => [newDisc, ...prev]);
+    recordAdminActivity('discount_created', `Created discount ${newDisc.code}.`, { discountId: newDisc.id, code: newDisc.code });
     showToast(`Discount "${newDisc.code}" created.`);
   };
 
   const toggleDiscount = (id: string) => {
+    const discount = discounts.find(item => item.id === id);
     setDiscounts(prev => prev.map(d => d.id === id ? { ...d, isActive: !d.isActive } : d));
+    if (discount) recordAdminActivity('discount_status_changed', `${discount.isActive ? 'Disabled' : 'Enabled'} discount ${discount.code}.`, { discountId: id, active: !discount.isActive });
   };
 
   const deleteDiscount = (id: string) => {
+    const discount = discounts.find(item => item.id === id);
     setDiscounts(prev => prev.filter(d => d.id !== id));
+    if (discount) recordAdminActivity('discount_deleted', `Deleted discount ${discount.code}.`, { discountId: id, code: discount.code });
     showToast('Discount code removed.');
   };
 
@@ -1247,6 +1274,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     localStorage.setItem('mn_marketing', JSON.stringify(marketingBanners));
   }, [marketingBanners]);
+
+  const [subscribers, setSubscribers] = useState<{ email: string; date: string }[]>(() => {
+    try { return JSON.parse(localStorage.getItem('mn_subscribers') || '[]'); } catch { return []; }
+  });
+  useEffect(() => { localStorage.setItem('mn_subscribers', JSON.stringify(subscribers)); }, [subscribers]);
 
   const [cloudReady, setCloudReady] = useState(false);
   const [firebaseUserReady, setFirebaseUserReady] = useState(!auth);
@@ -1326,10 +1358,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (Array.isArray(data.notifications)) setNotifications(data.notifications as AdminNotification[]);
         if (Array.isArray(data.activities)) {
           const cloudActivities = data.activities as CustomerActivity[];
-          setActivities(currentActivities => JSON.stringify(currentActivities) === JSON.stringify(cloudActivities) ? currentActivities : cloudActivities);
+          setActivities(currentActivities => {
+            const mergedActivities = [...cloudActivities, ...currentActivities.filter(activity => !cloudActivities.some(item => item.id === activity.id))]
+              .sort((first, second) => new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime())
+              .slice(0, 500);
+            return JSON.stringify(currentActivities) === JSON.stringify(mergedActivities) ? currentActivities : mergedActivities;
+          });
         }
         if (Array.isArray(data.discounts)) setDiscounts(data.discounts as DiscountCode[]);
         if (Array.isArray(data.marketingBanners)) setMarketingBanners(data.marketingBanners as MarketingBanner[]);
+        if (Array.isArray(data.subscribers)) setSubscribers(data.subscribers as { email: string; date: string }[]);
         if (data.storeSettings) setStoreSettings(data.storeSettings as StoreSettings);
       }
       setCloudReady(true);
@@ -1373,6 +1411,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       activities,
       discounts,
       marketingBanners,
+      subscribers,
       storeSettings,
       updatedAt: new Date().toISOString()
     }, { merge: true }).catch(error => {
@@ -1385,7 +1424,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         console.error('Firestore customer write failed:', error);
       });
     });
-  }, [cloudReady, firebaseUserReady, products, orders, customers, inventoryLogs, notifications, activities, discounts, marketingBanners, storeSettings]);
+  }, [cloudReady, firebaseUserReady, products, orders, customers, inventoryLogs, notifications, activities, discounts, marketingBanners, subscribers, storeSettings]);
 
   const addMarketingBanner = (banner: Omit<MarketingBanner, 'id'>) => {
     const newBanner: MarketingBanner = {
@@ -1393,15 +1432,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id: 'mkt-' + Date.now()
     };
     setMarketingBanners(prev => [newBanner, ...prev]);
+    recordAdminActivity('marketing_banner_created', `Created marketing banner ${newBanner.title}.`, { bannerId: newBanner.id });
     showToast('Marketing campaign created.');
   };
 
   const toggleMarketingBanner = (id: string) => {
     setMarketingBanners(prev => prev.map(b => b.id === id ? { ...b, active: !b.active } : b));
+    recordAdminActivity('marketing_banner_status_changed', `Changed marketing banner status.`, { bannerId: id });
   };
 
   const deleteMarketingBanner = (id: string) => {
     setMarketingBanners(prev => prev.filter(b => b.id !== id));
+    recordAdminActivity('marketing_banner_deleted', `Deleted marketing banner.`, { bannerId: id });
     showToast('Marketing campaign removed.');
   };
 
@@ -1455,12 +1497,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('Store data cleared.', 'success');
   };
 
-  const subscribers = [
-    { email: 'sarah.jenkins@fashiondaily.com', date: '2026-09-02' },
-    { email: 'alex.rivera@designstudio.io', date: '2026-09-03' },
-    { email: 'elena.rostova@couture.fr', date: '2026-09-05' },
-    { email: 'marcus.vance@streetstyle.com', date: '2026-09-06' }
-  ];
+  const addSubscriber = (email: string) => {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail || subscribers.some(subscriber => subscriber.email === normalizedEmail)) return;
+    setSubscribers(previous => [{ email: normalizedEmail, date: new Date().toISOString().slice(0, 10) }, ...previous]);
+    recordActivity('newsletter_subscribed', 'Subscribed to the Maison Noir newsletter.', { email: normalizedEmail });
+  };
 
   return (
     <AppContext.Provider
@@ -1540,6 +1582,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteMarketingBanner,
         marketingCampaigns: marketingBanners,
         subscribers,
+        addSubscriber,
         notifications,
         unreadNotificationCount,
         markNotificationAsRead,

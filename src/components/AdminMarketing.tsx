@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
   Megaphone, 
@@ -32,6 +32,12 @@ export const AdminMarketing: React.FC = () => {
   const [broadcastMsg, setBroadcastMsg] = useState('');
   const [broadcastType, setBroadcastType] = useState<'info' | 'promo' | 'order'>('promo');
   const [broadcastSent, setBroadcastSent] = useState(false);
+
+  useEffect(() => {
+    setAnnouncementText(storeSettings.tagline);
+    setAnnouncementEnabled(storeSettings.enablePushNotifications);
+    setPromoBanner(storeSettings.storeDescription);
+  }, [storeSettings.tagline, storeSettings.enablePushNotifications, storeSettings.storeDescription]);
 
   const handleSaveAnnouncement = (e: React.FormEvent) => {
     e.preventDefault();

@@ -14,12 +14,16 @@ import {
 } from 'lucide-react';
 
 export const AdminAnalytics: React.FC = () => {
-  const { orders, products, customers } = useApp();
+  const { orders, products, customers, storeSettings } = useApp();
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d' | '1y'>('30d');
+  const currency = storeSettings.currencySymbol || '$';
+  const rangeDays = timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : timeRange === '90d' ? 90 : 365;
+  const rangeStart = Date.now() - rangeDays * 24 * 60 * 60 * 1000;
+  const rangeOrders = orders.filter(order => new Date(order.createdAt).getTime() >= rangeStart);
 
   // Compute key analytics
-  const totalRevenue = orders.reduce((sum, o) => sum + (o.status !== 'Cancelled' ? o.total : 0), 0);
-  const successfulOrders = orders.filter(o => o.status !== 'Cancelled');
+  const totalRevenue = rangeOrders.reduce((sum, o) => sum + (o.status !== 'Cancelled' ? o.total : 0), 0);
+  const successfulOrders = rangeOrders.filter(o => o.status !== 'Cancelled');
   const avgOrderValue = successfulOrders.length > 0 ? totalRevenue / successfulOrders.length : 0;
   const totalItemsSold = successfulOrders.reduce((sum, o) => sum + o.items.reduce((s, i) => s + i.qty, 0), 0);
 
@@ -47,7 +51,7 @@ export const AdminAnalytics: React.FC = () => {
 
   const exportCSV = () => {
     const headers = 'Order ID,Date,Customer,Total,Status,Payment\n';
-    const rows = orders.map(o => 
+    const rows = rangeOrders.map(o =>
       `"${o.id}","${o.createdAt}","${o.customer.fullName}","${o.total}","${o.status}","${o.paymentMethod}"`
     ).join('\n');
     
@@ -105,7 +109,7 @@ export const AdminAnalytics: React.FC = () => {
             </div>
           </div>
           <div className="text-2xl font-black text-neutral-900 dark:text-neutral-50 mt-2">
-            ${totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {currency}{totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <div className="flex items-center gap-1 mt-2 text-xs font-bold text-emerald-600 dark:text-emerald-400">
             <TrendingUp className="w-3.5 h-3.5" />
@@ -121,7 +125,7 @@ export const AdminAnalytics: React.FC = () => {
             </div>
           </div>
           <div className="text-2xl font-black text-neutral-900 dark:text-neutral-50 mt-2">
-            ${avgOrderValue.toFixed(2)}
+            {currency}{avgOrderValue.toFixed(2)}
           </div>
           <div className="flex items-center gap-1 mt-2 text-xs font-bold text-indigo-600 dark:text-indigo-400">
             <ArrowUpRight className="w-3.5 h-3.5" />
@@ -176,7 +180,7 @@ export const AdminAnalytics: React.FC = () => {
                   <div className="flex justify-between text-xs font-semibold">
                     <span className="capitalize text-neutral-800 dark:text-neutral-200">{cat}</span>
                     <span className="font-mono text-neutral-900 dark:text-neutral-100">
-                      ${rev.toFixed(2)} ({pct.toFixed(1)}%)
+                      {currency}{rev.toFixed(2)} ({pct.toFixed(1)}%)
                     </span>
                   </div>
                   <div className="w-full h-2 rounded-full bg-neutral-100 dark:bg-neutral-800 overflow-hidden">
@@ -208,7 +212,7 @@ export const AdminAnalytics: React.FC = () => {
             ) : regionRevenue.slice(0, 5).map(([region, revenue]) => (
               <div key={region} className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-900">
                 <span className="font-semibold text-neutral-800 dark:text-neutral-200">{region}</span>
-                <span className="font-bold text-neutral-900 dark:text-neutral-100">${revenue.toFixed(2)}</span>
+                <span className="font-bold text-neutral-900 dark:text-neutral-100">{currency}{revenue.toFixed(2)}</span>
               </div>
             ))}
           </div>

@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { ShieldCheck, ArrowUp } from 'lucide-react';
 
 export const Footer: React.FC = () => {
-  const { isAdmin, setCurrentView, setIsAuthModalOpen, user, openPolicyModal } = useApp();
+  const { isAdmin, setCurrentView, setIsAuthModalOpen, user, openPolicyModal, addSubscriber, showToast } = useApp();
+  const [subscriberEmail, setSubscriberEmail] = useState('');
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -24,6 +25,23 @@ export const Footer: React.FC = () => {
             <p className="text-xs text-neutral-400 font-light leading-relaxed max-w-sm">
               Architectural monochromatic garments cut for eternity. Handcrafted with reverence for purity, restraint, and intentional dressing.
             </p>
+            <form onSubmit={(event) => {
+              event.preventDefault();
+              if (!subscriberEmail.trim()) return;
+              addSubscriber(subscriberEmail);
+              setSubscriberEmail('');
+              showToast('You are subscribed to Maison Noir updates.');
+            }} className="flex max-w-sm gap-2">
+              <input
+                type="email"
+                required
+                value={subscriberEmail}
+                onChange={event => setSubscriberEmail(event.target.value)}
+                placeholder="Email for atelier updates"
+                className="min-w-0 flex-1 border border-neutral-700 bg-transparent px-3 py-2 text-xs text-white placeholder:text-neutral-500 focus:outline-none focus:border-white"
+              />
+              <button type="submit" className="shrink-0 border border-white px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-white hover:bg-white hover:text-black transition-colors">Subscribe</button>
+            </form>
             <div className="text-[11px] text-neutral-400 space-y-1">
               <p>Atelier: 14 Adeola Odeku St, Victoria Island, Lagos</p>
               <p>Complimentary Express Shipping over $200</p>

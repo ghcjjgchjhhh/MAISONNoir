@@ -1324,9 +1324,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const unsubscribeStore = onSnapshot(storeRef, snapshot => {
       if (snapshot.exists()) {
         const data = snapshot.data();
+        const setCloudValue = <T,>(setter: React.Dispatch<React.SetStateAction<T>>, value: T) => {
+          setter(current => JSON.stringify(current) === JSON.stringify(value) ? current : value);
+        };
         if (Array.isArray(data.products)) {
           const shouldSeedCatalog = data.products.length === 0;
-          setProducts(shouldSeedCatalog ? INITIAL_PRODUCTS : data.products as Product[]);
+          setCloudValue(setProducts, shouldSeedCatalog ? INITIAL_PRODUCTS : data.products as Product[]);
         }
         if (Array.isArray(data.orders)) {
           const cloudOrders = data.orders as Order[];
@@ -1352,11 +1355,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               );
               if (existingIndex === -1) mergedCustomers.push(cloudCustomer);
             });
-            return mergedCustomers;
+            return JSON.stringify(currentCustomers) === JSON.stringify(mergedCustomers) ? currentCustomers : mergedCustomers;
           });
         }
-        if (Array.isArray(data.inventoryLogs)) setInventoryLogs(data.inventoryLogs as InventoryLog[]);
-        if (Array.isArray(data.notifications)) setNotifications(data.notifications as AdminNotification[]);
+        if (Array.isArray(data.inventoryLogs)) setCloudValue(setInventoryLogs, data.inventoryLogs as InventoryLog[]);
+        if (Array.isArray(data.notifications)) setCloudValue(setNotifications, data.notifications as AdminNotification[]);
         if (Array.isArray(data.activities)) {
           const cloudActivities = data.activities as CustomerActivity[];
           setActivities(currentActivities => {
@@ -1366,10 +1369,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             return JSON.stringify(currentActivities) === JSON.stringify(mergedActivities) ? currentActivities : mergedActivities;
           });
         }
-        if (Array.isArray(data.discounts)) setDiscounts(data.discounts as DiscountCode[]);
-        if (Array.isArray(data.marketingBanners)) setMarketingBanners(data.marketingBanners as MarketingBanner[]);
-        if (Array.isArray(data.subscribers)) setSubscribers(data.subscribers as { email: string; date: string }[]);
-        if (data.storeSettings) setStoreSettings(data.storeSettings as StoreSettings);
+        if (Array.isArray(data.discounts)) setCloudValue(setDiscounts, data.discounts as DiscountCode[]);
+        if (Array.isArray(data.marketingBanners)) setCloudValue(setMarketingBanners, data.marketingBanners as MarketingBanner[]);
+        if (Array.isArray(data.subscribers)) setCloudValue(setSubscribers, data.subscribers as { email: string; date: string }[]);
+        if (data.storeSettings) setCloudValue(setStoreSettings, data.storeSettings as StoreSettings);
       }
       setCloudReady(true);
     }, error => {
@@ -1388,7 +1391,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           );
           if (existingIndex === -1) mergedCustomers.push(cloudCustomer);
         });
-        return mergedCustomers;
+        return JSON.stringify(currentCustomers) === JSON.stringify(mergedCustomers) ? currentCustomers : mergedCustomers;
       });
     }, error => console.error('Firestore customer sync failed:', error));
 

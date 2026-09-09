@@ -25,7 +25,7 @@ import {
 } from '../data/mockData';
 import { auth, db, googleProvider } from '../firebase';
 import { onAuthStateChanged, signInAnonymously, signInWithPopup } from 'firebase/auth';
-import { collection, doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, onSnapshot, setDoc } from 'firebase/firestore';
 
 export type AdminTab = 
   | 'dashboard' 
@@ -936,6 +936,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     newOrder.total = Math.max(0, newOrder.subtotal + newOrder.shipping - discountAmount);
     pendingOrderIds.current.add(newOrder.id);
     setOrders(prev => [newOrder, ...prev]);
+    if (db && auth?.currentUser) {
+      void setDoc(doc(db, 'stores', 'maison-noir', 'orders', newOrder.id), newOrder, { merge: true })
+        .catch(error => console.error('Firestore order write failed:', error));
+    }
     recordActivity('order_placed', `Placed order ${newOrder.id}.`, { orderId: newOrder.id, total: newOrder.total, paymentMethod });
     if (user) {
       recordCustomerLogin(user);
@@ -975,6 +979,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateOrderStatus = (orderId: string, status: OrderStatus) => {
     let orderToRestock: Order | null = null;
+    let updatedOrderForCloud: Order | null = null;
     const orderBeforeUpdate = orders.find(order => order.id === orderId);
 
     setOrders(prev =>
@@ -1014,9 +1019,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
         ];
 
-        return { ...o, status, paymentStatus: pStatus, timeline: updatedTimeline };
+        updatedOrderForCloud = { ...o, status, paymentStatus: pStatus, timeline: updatedTimeline };
+        return updatedOrderForCloud;
       })
     );
+    if (updatedOrderForCloud && db && auth?.currentUser) {
+      void setDoc(doc(db, 'stores', 'maison-noir', 'orders', updatedOrderForCloud.id), updatedOrderForCloud, { merge: true })
+        .catch(error => console.error('Firestore order status write failed:', error));
+    }
 
     // If order was cancelled or returned, return stock to products
     if (orderToRestock) {
@@ -1070,6 +1080,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const deleteOrder = (orderId: string) => {
     const order = orders.find(item => item.id === orderId);
     setOrders(prev => prev.filter(o => o.id !== orderId));
+    if (db && auth?.currentUser) {
+      void deleteDoc(doc(db, 'stores', 'maison-noir', 'orders', orderId))
+        .catch(error => console.error('Firestore order delete failed:', error));
+    }
     recordAdminActivity('order_deleted', `Deleted order ${orderId}.`, { orderId, customerEmail: order?.customer.email || '' });
     showToast(`Order #${orderId} deleted.`);
   };
@@ -1321,6 +1335,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const storeRef = doc(db, 'stores', 'maison-noir');
     const customerCollectionRef = collection(db, 'stores', 'maison-noir', 'customers');
+    const orderCollectionRef = collection(db, 'stores', 'maison-noir', 'orders');
     const unsubscribeStore = onSnapshot(storeRef, snapshot => {
       if (snapshot.exists()) {
         const data = snapshot.data();
@@ -1394,10 +1409,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return JSON.stringify(currentCustomers) === JSON.stringify(mergedCustomers) ? currentCustomers : mergedCustomers;
       });
     }, error => console.error('Firestore customer sync failed:', error));
+    const unsubscribeOrders = onSnapshot(orderCollectionRef, snapshot => {
+      const cloudOrders = snapshot.docs.map(orderSnapshot => orderSnapshot.data() as Order);
+      if (cloudOrders.length === 0) return;
+      const cloudOrderIds = new Set(cloudOrders.map(order => order.id));
+      setOrders(currentOrders => {
+        const pendingOrders = currentOrders.filter(order => !cloudOrderIds.has(order.id) && pendingOrderIds.current.has(order.id));
+        const mergedOrders = [...pendingOrders, ...cloudOrders].sort((first, second) =>
+          new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime()
+        );
+        return JSON.stringify(currentOrders) === JSON.stringify(mergedOrders) ? currentOrders : mergedOrders;
+      });
+      cloudOrderIds.forEach(orderId => pendingOrderIds.current.delete(orderId));
+    }, error => console.error('Firestore order sync failed:', error));
 
     return () => {
       unsubscribeStore();
       unsubscribeCustomers();
+      unsubscribeOrders();
     };
   }, [firebaseUserReady]);
 

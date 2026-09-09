@@ -1317,6 +1317,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setCloudReady(true);
       return;
     }
+    if (!firebaseUserReady) return;
 
     const storeRef = doc(db, 'stores', 'maison-noir');
     const customerCollectionRef = collection(db, 'stores', 'maison-noir', 'customers');
@@ -1395,7 +1396,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       unsubscribeStore();
       unsubscribeCustomers();
     };
-  }, []);
+  }, [firebaseUserReady]);
 
   useEffect(() => {
     if (!db || !auth?.currentUser || !firebaseUserReady || !cloudReady) return;
